@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Hangman Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* Global styles */
+    body {
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin: 0 0 0.5rem;
+      font-size: 2.5rem;
+    }
+
+    .description {
+      color: #666;
+      max-width: 600px;
+      line-height: 1.6;
+      margin: 0 auto 2rem;
+    }
+
+    /* Custom component styling */
+    hangman-game {
+      width: 100%;
+      max-width: 800px;
+      --primary-color: #2c3e50;
+      --secondary-color: #3498db;
+      --success-color: #2ecc71;
+      --danger-color: #e74c3c;
+      --text-color: #34495e;
+    }
+
+    footer {
+      margin-top: 3rem;
+      color: #666;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    footer a {
+      color: #3498db;
+      text-decoration: none;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      .description {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Modern Hangman</h1>
+    <p class="description">
+      A modern implementation of the classic Hangman game using Web Components and SVG.
+      Guess the web development-related words! Use either your keyboard or click the
+      on-screen buttons to play.
+    </p>
+  </header>
+
+  <!-- Hangman Web Component -->
+  <hangman-game></hangman-game>
+
+  <footer>
+    <p>Made with ♥ using modern web technologies</p>
+    <p>Customize colors using CSS variables: --primary-color, --secondary-color, --success-color</p>
+  </footer>
+
+  <!-- Web Component Code -->
+  <template id="hangman-template">
+    <style>
+      :host {
+        display: block;
+        font-family: 'Segoe UI', system-ui;
+      }
+
+      .container {
+        padding: 2rem;
+        background: #f8f9fa;
+        border-radius: 1rem;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      .hangman-display {
+        position: relative;
+        width: 300px;
+        margin: 0 auto;
+      }
+
+      svg {
+        width: 100%;
+        height: auto;
+      }
+
+      .hangman-part {
+        stroke: var(--primary-color);
+        stroke-width: 4;
+        stroke-linecap: round;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .visible {
+        opacity: 1;
+      }
+
+      .word-display {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin: 2rem 0;
+        font-size: 2.5rem;
+        letter-spacing: 0.5rem;
+        color: var(--text-color);
+        flex-wrap: wrap;
+      }
+
+      .letter {
+        border-bottom: 4px solid var(--secondary-color);
+        min-width: 1em;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .keyboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+        gap: 0.5rem;
+        margin-top: 2rem;
+      }
+
+      button {
+        padding: 0.8rem;
+        border: none;
+        border-radius: 0.5rem;
+        background: var(--secondary-color);
+        color: white;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      button:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .status {
+        text-align: center;
+        margin: 1rem 0;
+        font-size: 1.2rem;
+        color: var(--text-color);
+      }
+
+      .restart {
+        background: var(--success-color);
+        grid-column: span 3;
+      }
+
+      @media (max-width: 600px) {
+        .word-display {
+          font-size: 1.5rem;
+          letter-spacing: 0.3rem;
+        }
+
+        .keyboard {
+          grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+        }
+
+        button {
+          padding: 0.5rem;
+          font-size: 1rem;
+        }
+      }
+    </style>
+
+    <div class="container">
+      <div class="hangman-display">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <!-- Gallows -->
+          <path d="M20 180h160M60 180l-20-140h120l-20 140" stroke="var(--primary-color)" stroke-width="4" />
+          <!-- Hangman parts -->
+          <path class="hangman-part" d="M100 40v30" />
+          <circle class="hangman-part" cx="100" cy="70" r="15" />
+          <path class="hangman-part" d="M100 85v50" />
+          <path class="hangman-part" d="M100 95l-30 20" />
+          <path class="hangman-part" d="M100 95l30 20" />
+          <path class="hangman-part" d="M100 135l-25 25" />
+          <path class="hangman-part" d="M100 135l25 25" />
+        </svg>
+      </div>
+
+      <div class="word-display" role="region" aria-live="polite"></div>
+      <div class="status" role="alert"></div>
+      <div class="keyboard" role="group" aria-label="Keyboard"></div>
+    </div>
+  </template>
+
+  <script>
+    class HangmanGame extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+        this.shadowRoot.appendChild(document.getElementById('hangman-template').content.cloneNode(true));
+
+        this.words = ['REACT', 'VUE', 'ANGULAR', 'JAVASCRIPT', 'TYPESCRIPT', 'WEBCOMPONENT'];
+        this.maxWrong = 7; // Fixed to match SVG parts
+        this.selectedWord = '';
+        this.guessedLetters = new Set();
+        this.wrongGuesses = 0;
+
+        this.wordDisplay = this.shadowRoot.querySelector('.word-display');
+        this.keyboard = this.shadowRoot.querySelector('.keyboard');
+        this.status = this.shadowRoot.querySelector('.status');
+        this.hangmanParts = this.shadowRoot.querySelectorAll('.hangman-part');
+      }
+
+      connectedCallback() {
+        this.initGame();
+        this.createKeyboard();
+        this.shadowRoot.addEventListener('click', this.handleButtonClick.bind(this));
+        document.addEventListener('keydown', this.handleKeyPress.bind(this));
+      }
+
+      disconnectedCallback() {
+        document.removeEventListener('keydown', this.handleKeyPress.bind(this));
+      }
+
+      initGame() {
+        this.selectedWord = this.words[Math.floor(Math.random() * this.words.length)];
+        this.guessedLetters.clear();
+        this.wrongGuesses = 0;
+        this.updateDisplay();
+        this.hangmanParts.forEach(part => part.classList.remove('visible'));
+        this.status.textContent = 'Guess the word!';
+        this.enableKeyboard(true);
+      }
+
+      createKeyboard() {
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        this.keyboard.innerHTML = [
+          ...letters.split('').map(letter => `
+            <button data-letter="${letter}" aria-label="${letter}">${letter}</button>
+          `.trim()),
+          `<button class="restart" aria-label="New Game">New Game</button>`
+        ].join('');
+      }
+
+      updateDisplay() {
+        this.wordDisplay.innerHTML = this.selectedWord
+          .split('')
+          .map(letter => `
+            <span class="letter" aria-hidden="true">
+              ${this.guessedLetters.has(letter) ? letter : ''}
+            </span>
+          `.trim()).join('');
+
+        this.hangmanParts.forEach((part, index) => {
+          part.classList.toggle('visible', index < this.wrongGuesses);
+        });
+
+        this.checkGameState();
+      }
+
+      handleButtonClick(e) {
+        if (e.target.dataset.letter) {
+          this.handleGuess(e.target.dataset.letter);
+          e.target.disabled = true;
+        } else if (e.target.classList.contains('restart')) {
+          this.initGame();
+        }
+      }
+
+      handleKeyPress(e) {
+        if (!e.key.match(/^[a-z]$/i)) return;
+        const letter = e.key.toUpperCase();
+        const button = [...this.keyboard.querySelectorAll('button')]
+          .find(btn => btn.dataset.letter === letter);
+        if (button && !button.disabled) {
+          this.handleGuess(letter);
+          button.disabled = true;
+        }
+      }
+
+      handleGuess(letter) {
+        if (this.guessedLetters.has(letter)) return;
+
+        this.guessedLetters.add(letter);
+        if (!this.selectedWord.includes(letter)) {
+          this.wrongGuesses++;
+        }
+
+        this.updateDisplay();
+      }
+
+      checkGameState() {
+        const wordGuessed = [...this.selectedWord].every(l => this.guessedLetters.has(l));
+        if (wordGuessed) {
+          this.status.textContent = `🎉 You won! `;
+          const restartBtn = document.createElement('button');
+          restartBtn.className = 'restart';
+          restartBtn.textContent = 'Play Again';
+          restartBtn.addEventListener('click', () => this.initGame());
+          this.status.appendChild(restartBtn);
+          this.enableKeyboard(false);
+        } else if (this.wrongGuesses >= this.maxWrong) {
+          this.status.textContent = `Game Over! The word was ${this.selectedWord}. `;
+          const restartBtn = document.createElement('button');
+          restartBtn.className = 'restart';
+          restartBtn.textContent = 'Try Again';
+          restartBtn.addEventListener('click', () => this.initGame());
+          this.status.appendChild(restartBtn);
+          this.enableKeyboard(false);
+        }
+      }
+
+      enableKeyboard(state) {
+        this.keyboard.querySelectorAll('[data-letter]').forEach(btn => {
+          btn.disabled = !state;
+        });
+      }
+    }
+
+    customElements.define('hangman-game', HangmanGame);
+
+    // Browser support check
+    if (!window.customElements) {
+      document.body.innerHTML = '<h1>Your browser needs to support Custom Elements to play this game.</h1>';
+    }
+  </script>
+</body>
+
+</html>
