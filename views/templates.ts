@@ -30,6 +30,26 @@ export const baseTemplate = (content: string): string => `
 
 export const gameComponent = (state: GameState): string => `
 <div class="game-container" id="game-container">
+  <!-- Difficulty pill selector -->
+  <div class="difficulty-control">
+    <div class="difficulty-pills">
+      <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+        <input type="hidden" name="difficulty" value="easy">
+        <button type="submit" class="difficulty-pill easy ${state.difficulty === 'easy' ? 'active' : ''}">Easy</button>
+      </form>
+      
+      <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+        <input type="hidden" name="difficulty" value="medium">
+        <button type="submit" class="difficulty-pill medium ${state.difficulty === 'medium' ? 'active' : ''}">Medium</button>
+      </form>
+      
+      <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+        <input type="hidden" name="difficulty" value="hard">
+        <button type="submit" class="difficulty-pill hard ${state.difficulty === 'hard' ? 'active' : ''}">Hard</button>
+      </form>
+    </div>
+  </div>
+
   ${hangmanSvg(state)}
   ${wordDisplay(state)}
   ${statusDisplay(state)}

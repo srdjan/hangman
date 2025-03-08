@@ -69,14 +69,29 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
   const [sessionId, _] = sessionResult.value;
 
   try {
-    const formData = await request.formData();
-    // Type-safe form data extraction with validation
-    const difficultyValue = formData.get("difficulty");
-    const difficulty = (
-      difficultyValue === "easy" ||
-      difficultyValue === "medium" ||
-      difficultyValue === "hard"
-    ) ? difficultyValue : "medium";
+    // First check if this is JSON data from hx-vals
+    let difficulty = "medium";
+    const contentType = request.headers.get("Content-Type");
+    
+    if (contentType && contentType.includes("application/json")) {
+      // From pill buttons using hx-vals
+      const jsonData = await request.json();
+      if (jsonData.difficulty && 
+          (jsonData.difficulty === "easy" || 
+           jsonData.difficulty === "medium" || 
+           jsonData.difficulty === "hard")) {
+        difficulty = jsonData.difficulty;
+      }
+    } else {
+      // From traditional form data
+      const formData = await request.formData();
+      const difficultyValue = formData.get("difficulty");
+      if (difficultyValue === "easy" || 
+          difficultyValue === "medium" || 
+          difficultyValue === "hard") {
+        difficulty = difficultyValue;
+      }
+    }
 
     const gameResult = createGame(difficulty);
     if (!gameResult.ok) {
@@ -92,6 +107,7 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
 
     return Promise.resolve(new Response(gameComponent(gameResult.value), { headers }));
   } catch (error) {
+    console.error("Error in newGameHandler:", error);
     return Promise.resolve(new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 }));
   }
 };

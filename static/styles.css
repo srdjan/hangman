@@ -173,9 +173,72 @@ button:active:not(:disabled) {
   grid-column: span 3;
 }
 
+/* Difficulty selector styles - both traditional and pill-based */
 .difficulty-selector {
   text-align: center;
   margin-top: 1.5rem;
+  display: none; /* Hide the original selector */
+}
+
+.difficulty-control {
+  margin-bottom: clamp(1rem, 3vw, 1.5rem);
+  text-align: center;
+}
+
+.difficulty-pills {
+  display: flex;
+  justify-content: center;
+  gap: clamp(0.3rem, 1vw, 0.5rem);
+  margin-bottom: clamp(1rem, 3vw, 1.5rem);
+}
+
+.difficulty-pills form {
+  margin: 0;
+  padding: 0;
+  display: contents;
+}
+
+.difficulty-pill {
+  flex: 0 1 auto;
+  background: rgba(52, 152, 219, 0.1);
+  color: var(--secondary-color);
+  border: 1px solid var(--secondary-color);
+  border-radius: 2rem;
+  padding: clamp(0.3rem, 1.5vw, 0.5rem) clamp(0.8rem, 3vw, 1.2rem);
+  font-size: clamp(0.85rem, 2.5vw, 0.95rem);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 60px;
+}
+
+.difficulty-pill:hover {
+  background: rgba(52, 152, 219, 0.2);
+  transform: translateY(-2px);
+}
+
+.difficulty-pill.active {
+  background: var(--secondary-color);
+  color: white;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
+}
+
+.difficulty-pill.easy.active {
+  background: #27ae60;
+  border-color: #27ae60;
+  box-shadow: 0 2px 8px rgba(39, 174, 96, 0.4);
+}
+
+.difficulty-pill.medium.active {
+  background: #f39c12;
+  border-color: #f39c12;
+  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.4);
+}
+
+.difficulty-pill.hard.active {
+  background: #e74c3c;
+  border-color: #e74c3c;
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.4);
 }
 
 select {
