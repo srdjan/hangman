@@ -9,7 +9,7 @@ const router = createRouter([
   { path: "/static/*", handler: staticFileHandler },
 ]);
 
-serve(async (req: Request) => {
+Deno.serve({ port: 8000 }, async (req: Request) => {
   const url = new URL(req.url);
   const path = url.pathname;
 
@@ -19,6 +19,6 @@ serve(async (req: Request) => {
     console.error("Server error:", error);
     return new Response("Server error", { status: 500 });
   }
-}, { port: 8000 });
+});
 
 console.log("Hangman server running at http://localhost:8000/");
