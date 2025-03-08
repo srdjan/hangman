@@ -16,13 +16,12 @@ export const baseTemplate = (content: string): string => `
 </head>
 <body>
   <header>
-    <h1>Secure Hangman</h1>
   </header>
   
   ${content}
   
   <footer>
-    <p>Made with Deno + HTMX</p>
+    <p>Cooked with ❤️ by <a href="https://srdjan.github.io" target="_blank" rel="noopener noreferrer">⊣˚∆˚⊢</a></p>
   </footer>
 </body>
 </html>
