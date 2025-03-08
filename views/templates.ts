@@ -17,10 +17,6 @@ export const baseTemplate = (content: string): string => `
 <body>
   <header>
     <h1>Secure Hangman</h1>
-    <p class="description">
-      A server-side implementation of Hangman using Deno and HTMX.
-      Guess the web development-related word!
-    </p>
   </header>
   
   ${content}
