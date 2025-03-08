@@ -1,5 +1,25 @@
 {
   "version": "4",
+  "specifiers": {
+    "jsr:@gabriel/ts-pattern@*": "5.6.2",
+    "jsr:@gabriel/ts-pattern@^5.6.2": "5.6.2",
+    "jsr:@std/assert@1": "1.0.11",
+    "jsr:@std/internal@^1.0.5": "1.0.5"
+  },
+  "jsr": {
+    "@gabriel/ts-pattern@5.6.2": {
+      "integrity": "49a1069523e2ba53d024d6b17a30029f8ffc80b24fec86d724d986a9774a7197"
+    },
+    "@std/assert@1.0.11": {
+      "integrity": "2461ef3c368fe88bc60e186e7744a93112f16fd110022e113a0849e94d1c83c1",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.5": {
+      "integrity": "54a546004f769c1ac9e025abd15a76b6671ddc9687e2313b67376125650dc7ba"
+    }
+  },
   "remote": {
     "https://deno.land/std@0.188.0/_util/asserts.ts": "178dfc49a464aee693a7e285567b3d0b555dc805ff490505a8aae34f9cfb1462",
     "https://deno.land/std@0.188.0/_util/os.ts": "d932f56d41e4f6a6093d56044e29ce637f8dcc43c5a90af43504a889cf1775e3",
@@ -22,10 +42,13 @@
     "https://deno.land/std@0.188.0/path/mod.ts": "ee161baec5ded6510ee1d1fb6a75a0f5e4b41f3f3301c92c716ecbdf7dae910d",
     "https://deno.land/std@0.188.0/path/posix.ts": "8b7c67ac338714b30c816079303d0285dd24af6b284f7ad63da5b27372a2c94d",
     "https://deno.land/std@0.188.0/path/separator.ts": "0fb679739d0d1d7bf45b68dacfb4ec7563597a902edbaf3c59b50d5bcadd93b1",
-    "https://deno.land/std@0.188.0/path/win32.ts": "d186344e5583bcbf8b18af416d13d82b35a317116e6460a5a3953508c3de5bba"
+    "https://deno.land/std@0.188.0/path/win32.ts": "d186344e5583bcbf8b18af416d13d82b35a317116e6460a5a3953508c3de5bba",
+    "https://esm.sh/ts-pattern@5.0.6": "92d58f6edc1ae40eddb762d2b8c992a3e8b7d856efc6540269f09d8e4a1b166b",
+    "https://esm.sh/ts-pattern@5.0.6/denonext/ts-pattern.mjs": "8d82de853e998e41ce7def2e205bb45a504178c52951d30ca7686ec32b8b4403"
   },
   "workspace": {
     "dependencies": [
+      "jsr:@gabriel/ts-pattern@^5.6.2",
       "jsr:@std/assert@1"
     ]
   }

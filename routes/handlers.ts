@@ -1,11 +1,13 @@
 import { createGame, processGuess } from "../state/game.ts";
 import { getSession, setSession, createSession } from "../state/session.ts";
 import { baseTemplate, gameComponent } from "../views/templates.ts";
-import { GameState, WordDifficulty } from "../types.ts";
-import * as path from "https://deno.land/std@0.188.0/path/mod.ts";
+import { GameState } from "../types.ts";
+import { Result, ok } from "../utils/result.ts";
 
-// Helper to get or create session
-const getOrCreateGameSession = (request: Request): [string, GameState] => {
+/**
+ * Retrieve or initialize a game session from request
+ */
+const getOrCreateGameSession = (request: Request): Result<[string, GameState]> => {
   const cookies = request.headers.get("cookie") || "";
   const sessionCookie = cookies
     .split(";")
@@ -20,16 +22,29 @@ const getOrCreateGameSession = (request: Request): [string, GameState] => {
   }
 
   if (!sessionId || !gameState) {
-    gameState = createGame();
+    const gameResult = createGame();
+    if (!gameResult.ok) {
+      return gameResult;
+    }
+
+    gameState = gameResult.value;
     sessionId = createSession(gameState);
   }
 
-  return [sessionId, gameState];
+  return ok([sessionId, gameState]);
 };
 
-// Handle the main game page
-export const gameHandler = async (request: Request): Promise<Response> => {
-  const [sessionId, gameState] = getOrCreateGameSession(request);
+/**
+ * Handle the main game page request
+ */
+export const gameHandler = (request: Request): Promise<Response> => {
+  const sessionResult = getOrCreateGameSession(request);
+
+  if (!sessionResult.ok) {
+    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+  }
+
+  const [sessionId, gameState] = sessionResult.value;
 
   const headers = new Headers({
     "Content-Type": "text/html; charset=utf-8",
@@ -37,50 +52,88 @@ export const gameHandler = async (request: Request): Promise<Response> => {
   });
 
   const content = gameComponent(gameState);
-  return new Response(baseTemplate(content), { headers });
+  return Promise.resolve(new Response(baseTemplate(content), { headers }));
 };
 
-// Handle creation of a new game
+/**
+ * Handle new game creation request
+ */
+// Inside newGameHandler function
 export const newGameHandler = async (request: Request): Promise<Response> => {
-  const [sessionId, _] = getOrCreateGameSession(request);
+  const sessionResult = getOrCreateGameSession(request);
 
-  const formData = await request.formData();
-  const difficulty = formData.get("difficulty") as WordDifficulty || "medium";
-
-  const gameState = createGame(difficulty);
-  setSession(sessionId, gameState);
-
-  const headers = new Headers({
-    "Content-Type": "text/html; charset=utf-8",
-    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-  });
-
-  return new Response(gameComponent(gameState), { headers });
-};
-
-// Handle a letter guess
-export const guessHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
-  const letter = params.letter?.toUpperCase() || "";
-  if (!/^[A-Z]$/.test(letter)) {
-    return new Response("Invalid letter", { status: 400 });
+  if (!sessionResult.ok) {
+    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
   }
 
-  const [sessionId, gameState] = getOrCreateGameSession(request);
+  const [sessionId, _] = sessionResult.value;
+
+  try {
+    const formData = await request.formData();
+    // Type-safe form data extraction with validation
+    const difficultyValue = formData.get("difficulty");
+    const difficulty = (
+      difficultyValue === "easy" ||
+      difficultyValue === "medium" ||
+      difficultyValue === "hard"
+    ) ? difficultyValue : "medium";
+
+    const gameResult = createGame(difficulty);
+    if (!gameResult.ok) {
+      return Promise.resolve(new Response(`Error: ${gameResult.error.message}`, { status: 500 }));
+    }
+
+    setSession(sessionId, gameResult.value);
+
+    const headers = new Headers({
+      "Content-Type": "text/html; charset=utf-8",
+      "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+    });
+
+    return Promise.resolve(new Response(gameComponent(gameResult.value), { headers }));
+  } catch (error) {
+    return Promise.resolve(new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 }));
+  }
+};
+
+/**
+ * Handle letter guess request
+ */
+export const guessHandler = (request: Request, params: Record<string, string>): Promise<Response> => {
+  const letter = params.letter?.toUpperCase() || "";
+  if (!/^[A-Z]$/.test(letter)) {
+    return Promise.resolve(new Response("Invalid letter", { status: 400 }));
+  }
+
+  const sessionResult = getOrCreateGameSession(request);
+
+  if (!sessionResult.ok) {
+    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+  }
+
+  const [sessionId, gameState] = sessionResult.value;
 
   // Process the guess and update the session
-  const updatedState = processGuess(gameState, letter);
-  setSession(sessionId, updatedState);
+  const updatedStateResult = processGuess(gameState, letter);
+
+  if (!updatedStateResult.ok) {
+    return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));
+  }
+
+  setSession(sessionId, updatedStateResult.value);
 
   const headers = new Headers({
     "Content-Type": "text/html; charset=utf-8",
     "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
   });
 
-  return new Response(gameComponent(updatedState), { headers });
+  return Promise.resolve(new Response(gameComponent(updatedStateResult.value), { headers }));
 };
 
-// Handle static files
-export const staticFileHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
+/**
+ * Handle static file requests
+ */
+export const staticFileHandler = async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
   const filePath = url.pathname.replace(/^\/static\//, "");
 
@@ -93,10 +146,10 @@ export const staticFileHandler = async (request: Request, params: Record<string,
         ? "text/javascript"
         : "application/octet-stream";
 
-    return new Response(contents, {
+    return Promise.resolve(new Response(contents, {
       headers: { "Content-Type": contentType }
-    });
+    }));
   } catch {
-    return new Response("Not found", { status: 404 });
+    return Promise.resolve(new Response("Not found", { status: 404 }));
   }
 };

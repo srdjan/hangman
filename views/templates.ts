@@ -1,9 +1,7 @@
 import { GameState } from "../types.ts";
-
-// function to extract display word based on current game state
-const getDisplayWord = (state: GameState): string[] =>
-  [...state.word].map(letter =>
-    state.guessedLetters.has(letter) ? letter : "");
+import { getDisplayWord } from "../state/game.ts";
+import { match } from "../utils/pattern.ts";
+import { unwrapOr } from "../utils/result.ts";
 
 export const baseTemplate = (content: string): string => `
 <!DOCTYPE html>
@@ -48,33 +46,31 @@ export const gameComponent = (state: GameState): string => `
 export const hangmanSvg = (state: GameState): string => {
   const { status, wrongGuesses } = state;
 
-  if (status === "won") {
-    return celebrationSvg();
-  }
-
-  return `
-  <div class="hangman-display">
-    <svg class="hangman-figure" viewBox="0 0 200 200" aria-hidden="true">
-      <!-- Base gallows structure (always visible) -->
-      <path d="M20 180h160M60 180l-20-140h120l-20 140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-      <path d="M30 40h140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" />
-      
-      <!-- Hangman parts - visible based on wrong guesses -->
-      ${wrongGuesses >= 1 ? `<path class="hangman-part visible" d="M100 40v30" />` : ''}
-      ${wrongGuesses >= 2 ? `<g class="hangman-part visible">
-        <circle cx="100" cy="70" r="15" />
-        <path d="M92 75c0 0 5 5 16 0" stroke="red" stroke-width="2" stroke-linecap="round" transform="rotate(180 100 75)" />
-        <circle cx="93" cy="65" r="2" fill="red" />
-        <circle cx="107" cy="65" r="2" fill="red" />
-      </g>` : ''}
-      ${wrongGuesses >= 3 ? `<path class="hangman-part visible" d="M100 85v50" />` : ''}
-      ${wrongGuesses >= 4 ? `<path class="hangman-part visible" d="M100 95c-10 5-20 15-30 20" />` : ''}
-      ${wrongGuesses >= 5 ? `<path class="hangman-part visible" d="M100 95c10 5 20 15 30 20" />` : ''}
-      ${wrongGuesses >= 6 ? `<path class="hangman-part visible" d="M100 135c-8 8-17 17-25 25" />` : ''}
-      ${wrongGuesses >= 7 ? `<path class="hangman-part visible" d="M100 135c8 8 17 17 25 25" />` : ''}
-    </svg>
-  </div>
-  `;
+  return match(status)
+    .with("won", () => celebrationSvg())
+    .otherwise(() => `
+      <div class="hangman-display">
+        <svg class="hangman-figure" viewBox="0 0 200 200" aria-hidden="true">
+          <!-- Base gallows structure (always visible) -->
+          <path d="M20 180h160M60 180l-20-140h120l-20 140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M30 40h140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" />
+          
+          <!-- Hangman parts - visible based on wrong guesses -->
+          ${wrongGuesses >= 1 ? `<path class="hangman-part visible" d="M100 40v30" />` : ''}
+          ${wrongGuesses >= 2 ? `<g class="hangman-part visible">
+            <circle cx="100" cy="70" r="15" />
+            <path d="M92 75c0 0 5 5 16 0" stroke="red" stroke-width="2" stroke-linecap="round" transform="rotate(180 100 75)" />
+            <circle cx="93" cy="65" r="2" fill="red" />
+            <circle cx="107" cy="65" r="2" fill="red" />
+          </g>` : ''}
+          ${wrongGuesses >= 3 ? `<path class="hangman-part visible" d="M100 85v50" />` : ''}
+          ${wrongGuesses >= 4 ? `<path class="hangman-part visible" d="M100 95c-10 5-20 15-30 20" />` : ''}
+          ${wrongGuesses >= 5 ? `<path class="hangman-part visible" d="M100 95c10 5 20 15 30 20" />` : ''}
+          ${wrongGuesses >= 6 ? `<path class="hangman-part visible" d="M100 135c-8 8-17 17-25 25" />` : ''}
+          ${wrongGuesses >= 7 ? `<path class="hangman-part visible" d="M100 135c8 8 17 17 25 25" />` : ''}
+        </svg>
+      </div>
+    `);
 };
 
 export const celebrationSvg = (): string => `
@@ -108,6 +104,9 @@ export const celebrationSvg = (): string => `
 `;
 
 export const wordDisplay = (state: GameState): string => {
+  // Use Result type for error handling and pattern matching
+  const _displayLetters = unwrapOr(getDisplayWord(state), []);
+
   return `
   <div class="word-display" aria-live="polite">
     ${[...state.word].map(letter => `
@@ -120,22 +119,12 @@ export const wordDisplay = (state: GameState): string => {
 };
 
 export const statusDisplay = (state: GameState): string => {
-  let message = "";
-  let statusClass = "";
-
-  switch (state.status) {
-    case "playing":
-      message = "Guess the word!";
-      break;
-    case "won":
-      message = `🎉 You won! The word was ${state.word}.`;
-      statusClass = "win";
-      break;
-    case "lost":
-      message = `Game Over! The word was ${state.word}.`;
-      statusClass = "lose";
-      break;
-  }
+  // Use pattern matching for cleaner conditional logic
+  const [message, statusClass] = match(state.status)
+    .with("playing", () => ["Guess the word!", ""])
+    .with("won", () => [`🎉 You won! The word was ${state.word}.`, "win"])
+    .with("lost", () => [`Game Over! The word was ${state.word}.`, "lose"])
+    .exhaustive();
 
   return `
   <div class="status ${statusClass}" role="alert">
@@ -146,7 +135,11 @@ export const statusDisplay = (state: GameState): string => {
 
 export const keyboard = (state: GameState): string => {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const isGameOver = state.status !== "playing";
+
+  // Pattern match on game status
+  const isGameOver = match(state.status)
+    .with("playing", () => false)
+    .otherwise(() => true);
 
   return `
   <div class="keyboard ${isGameOver ? 'game-over' : ''}" role="group" aria-label="Keyboard">
