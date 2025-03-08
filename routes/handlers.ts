@@ -4,9 +4,6 @@ import { baseTemplate, gameComponent } from "../views/templates.ts";
 import { GameState } from "../types.ts";
 import { Result, ok } from "../utils/result.ts";
 
-/**
- * Retrieve or initialize a game session from request
- */
 const getOrCreateGameSession = (request: Request): Result<[string, GameState]> => {
   const cookies = request.headers.get("cookie") || "";
   const sessionCookie = cookies
@@ -34,9 +31,6 @@ const getOrCreateGameSession = (request: Request): Result<[string, GameState]> =
   return ok([sessionId, gameState]);
 };
 
-/**
- * Handle the main game page request
- */
 export const gameHandler = (request: Request): Promise<Response> => {
   const sessionResult = getOrCreateGameSession(request);
 

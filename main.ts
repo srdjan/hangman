@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.188.0/http/server.ts";
 import { createRouter } from "./routes/router.ts";
 import { gameHandler, newGameHandler, guessHandler, staticFileHandler } from "./routes/handlers.ts";
 

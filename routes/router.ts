@@ -8,10 +8,8 @@ export interface Route {
   handler: RouteHandler;
 }
 
-// Create a path-parameter-aware router
 export const createRouter = (routes: Route[]) => {
   return (request: Request, path: string): Promise<Response> => {
-    // Handle static file requests
     if (path.startsWith("/static/")) {
       const staticRoute = routes.find(route => route.path === "/static/*");
       if (staticRoute) {
@@ -29,7 +27,6 @@ export const createRouter = (routes: Route[]) => {
       }
     }
 
-    // No route matched
     return Promise.resolve(new Response("Not found", { status: 404 }));
   };
 };
