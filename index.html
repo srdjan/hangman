@@ -210,7 +210,8 @@
 
     <div class="container">
       <div class="hangman-display">
-        <svg viewBox="0 0 200 200" aria-hidden="true">
+        <!-- Hangman SVG -->
+        <svg class="hangman-figure" viewBox="0 0 200 200" aria-hidden="true">
           <!-- Gallows -->
           <path d="M20 180h160M60 180l-20-140h120l-20 140" stroke="var(--primary-color)" stroke-width="4" />
           <!-- Hangman parts -->
@@ -221,6 +222,20 @@
           <path class="hangman-part" d="M100 95l30 20" />
           <path class="hangman-part" d="M100 135l-25 25" />
           <path class="hangman-part" d="M100 135l25 25" />
+        </svg>
+
+        <!-- Celebratory SVG (hidden by default) -->
+        <svg class="celebrate-figure" viewBox="0 0 200 200" aria-hidden="true" style="display: none;">
+          <!-- Stick figure with hands up -->
+          <circle cx="100" cy="70" r="15" stroke="var(--success-color)" stroke-width="4" fill="none" />
+          <path d="M100 85v50" stroke="var(--success-color)" stroke-width="4" stroke-linecap="round" />
+          <path d="M100 95l-30 20" stroke="var(--success-color)" stroke-width="4" stroke-linecap="round" />
+          <path d="M100 95l30 20" stroke="var(--success-color)" stroke-width="4" stroke-linecap="round" />
+          <path d="M100 135l-25 25" stroke="var(--success-color)" stroke-width="4" stroke-linecap="round" />
+          <path d="M100 135l25 25" stroke="var(--success-color)" stroke-width="4" stroke-linecap="round" />
+          <!-- Hands up -->
+          <path d="M100 85l-20-20" stroke="var(--success-color)" stroke-width="4" stroke-linecap="round" />
+          <path d="M100 85l20-20" stroke="var(--success-color)" stroke-width="4" stroke-linecap="round" />
         </svg>
       </div>
 
@@ -238,7 +253,7 @@
         this.shadowRoot.appendChild(document.getElementById('hangman-template').content.cloneNode(true));
 
         this.words = ['REACT', 'VUE', 'ANGULAR', 'JAVASCRIPT', 'TYPESCRIPT', 'WEBCOMPONENT'];
-        this.maxWrong = 7; // Fixed to match SVG parts
+        this.maxWrong = 7; // Matches the number of SVG parts
         this.selectedWord = '';
         this.guessedLetters = new Set();
         this.wrongGuesses = 0;
@@ -247,6 +262,8 @@
         this.keyboard = this.shadowRoot.querySelector('.keyboard');
         this.status = this.shadowRoot.querySelector('.status');
         this.hangmanParts = this.shadowRoot.querySelectorAll('.hangman-part');
+        this.hangmanFigure = this.shadowRoot.querySelector('.hangman-figure');
+        this.celebrateFigure = this.shadowRoot.querySelector('.celebrate-figure');
       }
 
       connectedCallback() {
@@ -266,6 +283,8 @@
         this.wrongGuesses = 0;
         this.updateDisplay();
         this.hangmanParts.forEach(part => part.classList.remove('visible'));
+        this.hangmanFigure.style.display = 'block'; // Show hangman figure
+        this.celebrateFigure.style.display = 'none'; // Hide celebratory figure
         this.status.textContent = 'Guess the word!';
         this.enableKeyboard(true);
       }
@@ -330,20 +349,18 @@
       checkGameState() {
         const wordGuessed = [...this.selectedWord].every(l => this.guessedLetters.has(l));
         if (wordGuessed) {
+          // Hide hangman figure and show celebratory figure
+          this.hangmanFigure.style.display = 'none';
+          this.celebrateFigure.style.display = 'block';
+
           this.status.textContent = `🎉 You won! `;
-          const restartBtn = document.createElement('button');
-          restartBtn.className = 'restart';
-          restartBtn.textContent = 'Play Again';
-          restartBtn.addEventListener('click', () => this.initGame());
-          this.status.appendChild(restartBtn);
           this.enableKeyboard(false);
         } else if (this.wrongGuesses >= this.maxWrong) {
+          // Ensure hangman figure is visible on loss
+          this.hangmanFigure.style.display = 'block';
+          this.celebrateFigure.style.display = 'none';
+
           this.status.textContent = `Game Over! The word was ${this.selectedWord}. `;
-          const restartBtn = document.createElement('button');
-          restartBtn.className = 'restart';
-          restartBtn.textContent = 'Try Again';
-          restartBtn.addEventListener('click', () => this.initGame());
-          this.status.appendChild(restartBtn);
           this.enableKeyboard(false);
         }
       }
