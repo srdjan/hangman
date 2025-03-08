@@ -7,17 +7,27 @@
   --transition-speed: 300ms;
   --transition-easing: cubic-bezier(0.25, 0.1, 0.25, 1);
   --hover-scale: 1.03;
+  
+  /* Responsive sizing variables */
+  --base-padding: clamp(0.5rem, 3vw, 2rem);
+  --font-size-h1: clamp(1.75rem, 5vw, 2.5rem);
+  --font-size-word: clamp(1.25rem, 4vw, 2.5rem);
+  --font-size-btn: clamp(0.9rem, 2.5vw, 1.1rem);
+  --letter-spacing: clamp(0.2rem, 1vw, 0.5rem);
+  --button-size: clamp(32px, 8vw, 40px);
+  --svg-width: clamp(220px, 70vw, 300px);
 }
 
 body {
   margin: 0;
-  padding: 2rem;
+  padding: var(--base-padding);
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   display: flex;
   flex-direction: column;
   align-items: center;
+  box-sizing: border-box;
 }
 
 header {
@@ -28,7 +38,8 @@ header {
 h1 {
   color: #2c3e50;
   margin: 0 0 0.5rem;
-  font-size: 2.5rem;
+  font-size: var(--font-size-h1);
+  line-height: 1.2;
 }
 
 .description {
@@ -41,18 +52,18 @@ h1 {
 .game-container {
   width: 100%;
   max-width: 800px;
-  padding-right: 2rem;
-  padding-left: 2rem;
+  padding: var(--base-padding);
   background: #f8f9fa;
   border-radius: 1rem;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
   transition: transform var(--transition-speed) var(--transition-easing);
   position: relative;
+  box-sizing: border-box;
 }
 
 .hangman-display {
   position: relative;
-  width: 300px;
+  width: var(--svg-width);
   margin: 0 auto;
   transition: transform var(--transition-speed) var(--transition-easing);
 }
@@ -80,10 +91,10 @@ svg {
 .word-display {
   display: flex;
   justify-content: center;
-  gap: 1rem;
-  margin: 2rem 0;
-  font-size: 2.5rem;
-  letter-spacing: 0.5rem;
+  gap: clamp(0.5rem, 2vw, 1rem);
+  margin: clamp(1rem, 3vw, 2rem) 0;
+  font-size: var(--font-size-word);
+  letter-spacing: var(--letter-spacing);
   color: var(--text-color);
   flex-wrap: wrap;
 }
@@ -120,9 +131,9 @@ svg {
 /* Keyboard */
 .keyboard {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
-  gap: 0.5rem;
-  margin-top: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(var(--button-size), 1fr));
+  gap: clamp(0.25rem, 1vw, 0.5rem);
+  margin-top: clamp(1rem, 3vw, 2rem);
 }
 
 .keyboard.game-over {
@@ -130,14 +141,16 @@ svg {
 }
 
 button {
-  padding: 0.8rem;
+  padding: clamp(0.4rem, 2vw, 0.8rem);
   border: none;
   border-radius: 0.5rem;
   background: var(--secondary-color);
   color: white;
-  font-size: 1.1rem;
+  font-size: var(--font-size-btn);
   cursor: pointer;
   transition: all var(--transition-speed) var(--transition-easing);
+  min-height: var(--button-size);
+  touch-action: manipulation;
 }
 
 button:disabled {
@@ -181,17 +194,30 @@ footer {
 }
 
 @media (max-width: 600px) {
-  .word-display {
-    font-size: 1.5rem;
-    letter-spacing: 0.3rem;
+  header, footer {
+    margin-bottom: clamp(1rem, 3vw, 2rem);
   }
 
-  .keyboard {
-    grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+  .letter {
+    border-bottom-width: 3px;
   }
 
+  .difficulty-selector {
+    margin-top: clamp(1rem, 3vw, 1.5rem);
+  }
+  
+  /* Add extra touch area for better mobile experience */
   button {
-    padding: 0.5rem;
-    font-size: 1rem;
+    position: relative;
+  }
+  
+  button::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    z-index: -1;
   }
 }
