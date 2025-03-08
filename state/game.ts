@@ -3,9 +3,9 @@ import { Result, ok, err } from "../utils/result.ts";
 
 // Define word lists with explicit readonly arrays
 const wordLists: Record<WordDifficulty, readonly string[]> = {
-  easy: ["HTML", "CSS", "VUE", "REACT", "NODE"] as const,
-  medium: ["JAVASCRIPT", "TYPESCRIPT", "WEBCOMPONENT", "FRAMEWORK", "FRONTEND"] as const,
-  hard: ["ASYNCHRONOUS", "OBSERVABLES", "AUTHENTICATION", "PROGRESSIVE", "ARCHITECTURE"] as const,
+  easy: ["CAT", "DOG", "HAT", "PEN", "LAMP", "CHAIR"] as const,
+  medium: ["JUNGLE", "MONKEY", "PLANET", "WINDOW", "DINNER"] as const,
+  hard: ["SOPHISTICATED", "TRIUMPHANTLY", "REVOLUTIONARY", "EXTRAORDINARY", "DETERMINATION"] as const,
 };
 
 /**
