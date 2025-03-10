@@ -1,14 +1,34 @@
 {
   "version": "4",
   "specifiers": {
+    "jsr:@effection/effection@*": "3.1.0",
+    "jsr:@effection/effection@^3.1.0": "3.1.0",
+    "jsr:@frontside/continuation@0.1.6": "0.1.6",
     "jsr:@gabriel/ts-pattern@*": "5.6.2",
     "jsr:@gabriel/ts-pattern@^5.6.2": "5.6.2",
     "jsr:@std/assert@1": "1.0.11",
+    "jsr:@std/assert@1.0.10": "1.0.10",
     "jsr:@std/internal@^1.0.5": "1.0.5"
   },
   "jsr": {
+    "@effection/effection@3.1.0": {
+      "integrity": "3891a1ad37df3b85f03bce582c61f47904576a001b31163af29ba79c3b677f5f",
+      "dependencies": [
+        "jsr:@frontside/continuation",
+        "jsr:@std/assert@1.0.10"
+      ]
+    },
+    "@frontside/continuation@0.1.6": {
+      "integrity": "f36a3b9ccdf49f0b15778a5e11a37d91bb097f67522f17ca5fbd668560b31c17"
+    },
     "@gabriel/ts-pattern@5.6.2": {
       "integrity": "49a1069523e2ba53d024d6b17a30029f8ffc80b24fec86d724d986a9774a7197"
+    },
+    "@std/assert@1.0.10": {
+      "integrity": "59b5cbac5bd55459a19045d95cc7c2ff787b4f8527c0dd195078ff6f9481fbb3",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
     },
     "@std/assert@1.0.11": {
       "integrity": "2461ef3c368fe88bc60e186e7744a93112f16fd110022e113a0849e94d1c83c1",
@@ -48,6 +68,7 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@effection/effection@^3.1.0",
       "jsr:@gabriel/ts-pattern@^5.6.2",
       "jsr:@std/assert@1"
     ]

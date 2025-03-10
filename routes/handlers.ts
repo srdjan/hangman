@@ -64,7 +64,7 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
 
   try {
     // First check if this is JSON data from hx-vals
-    let difficulty = "medium";
+    let difficulty: "easy" | "medium" | "hard" = "medium";
     const contentType = request.headers.get("Content-Type");
     
     if (contentType && contentType.includes("application/json")) {
@@ -74,7 +74,7 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
           (jsonData.difficulty === "easy" || 
            jsonData.difficulty === "medium" || 
            jsonData.difficulty === "hard")) {
-        difficulty = jsonData.difficulty;
+        difficulty = jsonData.difficulty as "easy" | "medium" | "hard";
       }
     } else {
       // From traditional form data
@@ -83,7 +83,7 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
       if (difficultyValue === "easy" || 
           difficultyValue === "medium" || 
           difficultyValue === "hard") {
-        difficulty = difficultyValue;
+        difficulty = difficultyValue as "easy" | "medium" | "hard";
       }
     }
 
