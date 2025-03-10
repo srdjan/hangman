@@ -82,5 +82,10 @@ const runServer = function*() {
   }
 };
 
-// Run the server with effection
-effection.main(runServer);
+// Export the server function for deployment
+export const main = runServer;
+
+// Run the server with effection if this file is executed directly
+if (import.meta.main) {
+  effection.main(runServer);
+}

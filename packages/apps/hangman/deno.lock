@@ -71,29 +71,6 @@
       "jsr:@effection/effection@^3.1.0",
       "jsr:@gabriel/ts-pattern@^5.6.2",
       "jsr:@std/assert@1"
-    ],
-    "members": {
-      "deploy/hangman": {
-        "dependencies": [
-          "jsr:@effection/effection@^3.1.0",
-          "jsr:@gabriel/ts-pattern@^5.6.2",
-          "jsr:@std/assert@1"
-        ]
-      },
-      "packages/apps/example": {
-        "dependencies": [
-          "jsr:@effection/effection@^3.1.0",
-          "jsr:@gabriel/ts-pattern@^5.6.2",
-          "jsr:@std/assert@1"
-        ]
-      },
-      "packages/apps/hangman": {
-        "dependencies": [
-          "jsr:@effection/effection@^3.1.0",
-          "jsr:@gabriel/ts-pattern@^5.6.2",
-          "jsr:@std/assert@1"
-        ]
-      }
-    }
+    ]
   }
 }

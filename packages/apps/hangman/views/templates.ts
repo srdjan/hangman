@@ -65,24 +65,24 @@ export const hangmanSvg = (state: GameState): string => {
     .with("won", () => celebrationSvg())
     .otherwise(() => `
       <div class="hangman-display">
-        <svg class="hangman-figure" viewBox="0 0 200 200" aria-hidden="true">
+        <svg class="hangman-figure" viewBox="0 0 200 200" aria-hidden="true" style="background-color: transparent !important; background: none !important;" fill="none">
           <!-- Base gallows structure (always visible) -->
-          <path d="M20 180h160M60 180l-20-140h120l-20 140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M30 40h140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" />
+          <path d="M20 180h160M60 180l-20-140h120l-20 140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          <path d="M30 40h140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" fill="none" />
           
           <!-- Hangman parts - visible based on wrong guesses -->
-          ${wrongGuesses >= 1 ? `<path class="hangman-part visible" d="M100 40v30" />` : ''}
-          ${wrongGuesses >= 2 ? `<g class="hangman-part visible">
-            <circle cx="100" cy="70" r="15" />
-            <path d="M92 75c0 0 5 5 16 0" stroke="red" stroke-width="2" stroke-linecap="round" transform="rotate(180 100 75)" />
+          ${wrongGuesses >= 1 ? `<path class="hangman-part visible" d="M100 40v30" fill="none" />` : ''}
+          ${wrongGuesses >= 2 ? `<g class="hangman-part visible" fill="none">
+            <circle cx="100" cy="70" r="15" fill="white" stroke="var(--primary-color)" stroke-width="4" />
+            <path d="M92 75c0 0 5 5 16 0" stroke="red" stroke-width="2" stroke-linecap="round" transform="rotate(180 100 75)" fill="none" />
             <circle cx="93" cy="65" r="2" fill="red" />
             <circle cx="107" cy="65" r="2" fill="red" />
           </g>` : ''}
-          ${wrongGuesses >= 3 ? `<path class="hangman-part visible" d="M100 85v50" />` : ''}
-          ${wrongGuesses >= 4 ? `<path class="hangman-part visible" d="M100 95c-10 5-20 15-30 20" />` : ''}
-          ${wrongGuesses >= 5 ? `<path class="hangman-part visible" d="M100 95c10 5 20 15 30 20" />` : ''}
-          ${wrongGuesses >= 6 ? `<path class="hangman-part visible" d="M100 135c-8 8-17 17-25 25" />` : ''}
-          ${wrongGuesses >= 7 ? `<path class="hangman-part visible" d="M100 135c8 8 17 17 25 25" />` : ''}
+          ${wrongGuesses >= 3 ? `<path class="hangman-part visible" d="M100 85v50" fill="none" />` : ''}
+          ${wrongGuesses >= 4 ? `<path class="hangman-part visible" d="M100 95c-10 5-20 15-30 20" fill="none" />` : ''}
+          ${wrongGuesses >= 5 ? `<path class="hangman-part visible" d="M100 95c10 5 20 15 30 20" fill="none" />` : ''}
+          ${wrongGuesses >= 6 ? `<path class="hangman-part visible" d="M100 135c-8 8-17 17-25 25" fill="none" />` : ''}
+          ${wrongGuesses >= 7 ? `<path class="hangman-part visible" d="M100 135c8 8 17 17 25 25" fill="none" />` : ''}
         </svg>
       </div>
     `);
@@ -90,7 +90,7 @@ export const hangmanSvg = (state: GameState): string => {
 
 export const celebrationSvg = (): string => `
 <div class="hangman-display">
-  <svg class="celebrate-figure" viewBox="0 0 200 200" aria-hidden="true">
+  <svg class="celebrate-figure" viewBox="0 0 200 200" aria-hidden="true" style="background-color: transparent;" fill="none">
     <!-- Background celebratory elements -->
     <g class="confetti">
       <circle cx="50" cy="50" r="3" fill="gold" />

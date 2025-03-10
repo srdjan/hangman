@@ -1,3 +1,4 @@
+/* hangman styles.css */
 :root {
   --primary-color: #2c3e50;
   --secondary-color: #3498db;
@@ -118,6 +119,8 @@ body:hover h1::after {
   width: var(--svg-width);
   margin: 0 auto;
   transition: transform var(--transition-speed) var(--transition-easing);
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 svg {
@@ -125,12 +128,18 @@ svg {
   height: auto;
   transform-origin: center;
   transition: all var(--transition-speed) var(--transition-easing);
+  background: transparent;
+}
+
+.hangman-figure, .celebrate-figure {
+  background: transparent;
 }
 
 .hangman-part {
   stroke: var(--primary-color);
   stroke-width: 4;
   stroke-linecap: round;
+  fill: transparent;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
