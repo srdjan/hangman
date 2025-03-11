@@ -3,8 +3,7 @@
   "workspace": {
     "members": [
       "packages/apps/*",
-      "packages/shared/*",
-      "deploy/*"
+      "packages/shared/*"
     ]
   },
   "imports": {

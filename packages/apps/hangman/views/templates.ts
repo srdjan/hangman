@@ -1,9 +1,7 @@
 import { GameState } from "../types.ts";
-import { getDisplayWord } from "../state/game.ts";
 import { match } from "../utils/pattern.ts";
-import { unwrapOr } from "../utils/result.ts";
 
-export const baseTemplate = (content: string): string => `
+export const homePage = (content: string): string => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,12 +9,11 @@ export const baseTemplate = (content: string): string => `
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Secure Hangman Game</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <header>
-  </header>
+  <header></header>
   
   ${content}
   
@@ -49,9 +46,9 @@ export const gameComponent = (state: GameState): string => `
     </div>
   </div>
 
+  ${statusDisplay(state)}
   ${hangmanSvg(state)}
   ${wordDisplay(state)}
-  ${statusDisplay(state)}
   ${keyboard(state)}
   ${difficultySelector(state)}
 </div>
@@ -119,22 +116,16 @@ export const celebrationSvg = (): string => `
 `;
 
 export const wordDisplay = (state: GameState): string => {
-  // Use Result type for error handling and pattern matching
-  const _displayLetters = unwrapOr(getDisplayWord(state), []);
-
   return `
   <div class="word-display" aria-live="polite">
     ${[...state.word].map(letter => `
-      <span class="letter">
-        ${state.guessedLetters.has(letter) ? letter : ''}
-      </span>
+      <span class="letter">${state.guessedLetters.has(letter) ? letter : '<span style="visibility:hidden">X</span>'}</span>
     `).join('')}
   </div>
   `;
 };
 
 export const statusDisplay = (state: GameState): string => {
-  // Use pattern matching for cleaner conditional logic
   const [message, statusClass] = match(state.status)
     .with("playing", () => ["Guess the word!", ""])
     .with("won", () => [`🎉 You won! The word was ${state.word}.`, "win"])
@@ -151,7 +142,6 @@ export const statusDisplay = (state: GameState): string => {
 export const keyboard = (state: GameState): string => {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-  // Pattern match on game status
   const isGameOver = match(state.status)
     .with("playing", () => false)
     .otherwise(() => true);

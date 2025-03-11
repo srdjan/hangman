@@ -1,6 +1,6 @@
 import { createGame, processGuess } from "../state/game.ts";
 import { getSession, setSession, createSession } from "../state/session.ts";
-import { baseTemplate, gameComponent } from "../views/templates.ts";
+import { homePage, gameComponent } from "../views/templates.ts";
 import { GameState } from "../types.ts";
 import { Result, ok } from "../utils/result.ts";
 
@@ -46,13 +46,12 @@ export const gameHandler = (request: Request): Promise<Response> => {
   });
 
   const content = gameComponent(gameState);
-  return Promise.resolve(new Response(baseTemplate(content), { headers }));
+  return Promise.resolve(new Response(homePage(content), { headers }));
 };
 
 /**
  * Handle new game creation request
  */
-// Inside newGameHandler function
 export const newGameHandler = async (request: Request): Promise<Response> => {
   const sessionResult = getOrCreateGameSession(request);
 
@@ -66,23 +65,23 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
     // First check if this is JSON data from hx-vals
     let difficulty: "easy" | "medium" | "hard" = "medium";
     const contentType = request.headers.get("Content-Type");
-    
+
     if (contentType && contentType.includes("application/json")) {
       // From pill buttons using hx-vals
       const jsonData = await request.json();
-      if (jsonData.difficulty && 
-          (jsonData.difficulty === "easy" || 
-           jsonData.difficulty === "medium" || 
-           jsonData.difficulty === "hard")) {
+      if (jsonData.difficulty &&
+        (jsonData.difficulty === "easy" ||
+          jsonData.difficulty === "medium" ||
+          jsonData.difficulty === "hard")) {
         difficulty = jsonData.difficulty as "easy" | "medium" | "hard";
       }
     } else {
       // From traditional form data
       const formData = await request.formData();
       const difficultyValue = formData.get("difficulty");
-      if (difficultyValue === "easy" || 
-          difficultyValue === "medium" || 
-          difficultyValue === "hard") {
+      if (difficultyValue === "easy" ||
+        difficultyValue === "medium" ||
+        difficultyValue === "hard") {
         difficulty = difficultyValue as "easy" | "medium" | "hard";
       }
     }
@@ -116,7 +115,6 @@ export const guessHandler = (request: Request, params: Record<string, string>): 
   }
 
   const sessionResult = getOrCreateGameSession(request);
-
   if (!sessionResult.ok) {
     return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
   }
@@ -157,7 +155,7 @@ export const staticFileHandler = async (request: Request): Promise<Response> => 
     } else {
       contentType = "application/octet-stream";
     }
-    
+
     // We'll embed the CSS directly if we can't load it from file
     if (filePath === "styles.css") {
       // If this is styles.css and we're in deployment, return hardcoded CSS
@@ -166,15 +164,15 @@ export const staticFileHandler = async (request: Request): Promise<Response> => 
         headers: { "Content-Type": "text/css" }
       });
     }
-    
+
     // For other files, try different paths
     let contents;
     let foundPath = null;
-    
+
     try {
       // Try direct path (works in deployment when using cd to app dir)
       const directPath = `./static/${filePath}`;
-      contents = filePath.endsWith(".css") || filePath.endsWith(".js") 
+      contents = filePath.endsWith(".css") || filePath.endsWith(".js")
         ? await Deno.readTextFile(directPath)
         : await Deno.readFile(directPath);
       foundPath = directPath;
@@ -210,7 +208,7 @@ export const staticFileHandler = async (request: Request): Promise<Response> => 
     console.error(`Failed to load static file: ${filePath}`, error);
     if (filePath === "styles.css") {
       // Last-resort fallback for CSS
-      return new Response("/* Fallback CSS */", { 
+      return new Response("/* Fallback CSS */", {
         headers: { "Content-Type": "text/css" }
       });
     }
@@ -231,7 +229,7 @@ async function getStaticCSS() {
       `${Deno.cwd()}/deploy/hangman/static/styles.css`,
       "/static/styles.css"
     ];
-    
+
     for (const path of paths) {
       try {
         return await Deno.readTextFile(path);
@@ -239,7 +237,7 @@ async function getStaticCSS() {
         // Try next path
       }
     }
-    
+
     // If all paths fail, return a basic fallback CSS
     return `
 :root {
