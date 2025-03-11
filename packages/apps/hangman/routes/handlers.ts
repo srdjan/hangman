@@ -1,6 +1,6 @@
 import { createGame, processGuess } from "../state/game.ts";
 import { getSession, setSession, createSession } from "../state/session.ts";
-import { homePage, gameComponent } from "../views/templates.ts";
+import { homePage, gameComponent } from "../views/home.ts";
 import { GameState } from "../types.ts";
 import { Result, ok } from "../utils/result.ts";
 
