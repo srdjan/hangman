@@ -3,7 +3,8 @@ import { getSession, setSession, createSession } from "../state/session.ts";
 import { homePage, gameComponent } from "../views/home.ts";
 import { GameState } from "../types.ts";
 import { Result, ok } from "../utils/result.ts";
-import { categories } from "../data/wordLists.ts";
+// Import categories if needed for validation
+// import { categories } from "../data/wordLists.ts";
 
 const getOrCreateGameSession = (request: Request): Result<[string, GameState]> => {
   const cookies = request.headers.get("cookie") || "";
@@ -231,16 +232,16 @@ export const staticFileHandler = async (request: Request): Promise<Response> => 
           ? await Deno.readTextFile(modulePath)
           : await Deno.readFile(modulePath);
         foundPath = modulePath;
-      } catch (moduleError) {
+      } catch (_moduleError) {
         try {
-          // Try full monorepo path
+          // Try src/static path
           const cwd = Deno.cwd();
-          const monorepoPath = `${cwd}/packages/apps/hangman/static/${filePath}`;
+          const srcPath = `${cwd}/src/static/${filePath}`;
           contents = filePath.endsWith(".css") || filePath.endsWith(".js")
-            ? await Deno.readTextFile(monorepoPath)
-            : await Deno.readFile(monorepoPath);
-          foundPath = monorepoPath;
-        } catch (cwdError) {
+            ? await Deno.readTextFile(srcPath)
+            : await Deno.readFile(srcPath);
+          foundPath = srcPath;
+        } catch (_cwdError) {
           console.error(`All file loading attempts failed for ${filePath}`);
           throw directError;
         }
@@ -266,14 +267,12 @@ export const staticFileHandler = async (request: Request): Promise<Response> => 
 // Function to get CSS content - we'll use this as a fallback
 async function getStaticCSS() {
   try {
-    // Add paths for both monorepo and deployment structures
+    // Add paths for single repo structure
     const paths = [
       "./static/styles.css",
       "../static/styles.css",
-      `${Deno.cwd()}/packages/apps/hangman/static/styles.css`,
+      `${Deno.cwd()}/src/static/styles.css`,
       `${Deno.cwd()}/static/styles.css`,
-      "../../packages/apps/hangman/static/styles.css",
-      `${Deno.cwd()}/deploy/hangman/static/styles.css`,
       "/static/styles.css"
     ];
 

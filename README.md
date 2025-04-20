@@ -1,25 +1,20 @@
-# Hangman Monorepo
+# Hangman Game
 
-A monorepo containing multiple applications, starting with the classic Hangman word guessing game.
+A modern, accessible implementation of the classic Hangman word guessing game built with Deno, TypeScript, and HTMX.
 
-## Applications
+![Hangman Game Screenshot](https://via.placeholder.com/800x450.png?text=Hangman+Game+Screenshot)
 
-### Hangman Game
+## Features
 
-A modern web-based implementation of the classic Hangman word guessing game with a focus on web development-related words.
-
-### Example App
-
-A simple example application demonstrating how to use shared packages in the monorepo.
-
-#### Features
-
-- Three difficulty levels (easy, medium, hard)
-- Server-side game state management
-- Responsive design for desktop and mobile
-- Keyboard support for letter inputs
-- Visual hangman representation using SVG
-- Session-based gameplay
+- 🎮 Three difficulty levels (Easy, Medium, Hard)
+- 🔤 Multiple word categories (General, Animals, Countries)
+- 🏆 Game statistics tracking (wins, streaks, time)
+- 💡 Hint system to reveal letters when stuck
+- 📱 Responsive design for all device sizes
+- ⌨️ Full keyboard navigation support
+- 👁️ Screen reader compatibility for accessibility
+- 🎨 Visual hangman representation using SVG
+- 🔄 Session-based gameplay
 
 ## Technologies
 
@@ -36,193 +31,163 @@ A simple example application demonstrating how to use shared packages in the mon
 
 ## Project Structure
 
-```
-hangman-monorepo/
-├── packages/
-│   ├── apps/            # All applications
-│   │   ├── hangman/     # Hangman game application
-│   │   │   ├── main.ts              # Entry point that sets up HTTP server and routes
-│   │   │   ├── index.html           # Main HTML template
-│   │   │   ├── routes/              # Request routing and handling
-│   │   │   │   ├── handlers.ts      # HTTP request handlers
-│   │   │   │   └── router.ts        # URL pattern matching and routing
-│   │   │   ├── state/               # Game state management
-│   │   │   │   ├── game.ts          # Game logic and state management
-│   │   │   │   └── session.ts       # User session handling
-│   │   │   ├── utils/               # Application-specific utilities
-│   │   │   │   ├── array.ts         # Array helper functions
-│   │   │   │   ├── pattern.ts       # Pattern matching utilities
-│   │   │   │   └── result.ts        # Result type for error handling
-│   │   │   ├── views/               # HTML rendering
-│   │   │   │   └── templates.ts     # HTML template generation
-│   │   │   ├── static/              # Static assets
-│   │   │   │   └── styles.css       # CSS styling
-│   │   │   └── types.ts             # TypeScript type definitions
-│   │   └── example/     # Example application
-│   │       ├── main.ts              # Entry point for example app
-│   │       └── deno.json            # Example app configuration
-│   └── shared/          # Shared packages used across applications
-│       └── utils/       # Shared utility functions
-│           ├── mod.ts               # Entry point for shared utilities
-│           ├── array.ts             # Array utilities
-│           └── result.ts            # Result type for error handling
-├── deno.json            # Root configuration file
-└── README.md            # This file
+```text
+hangman/
+├── src/                  # Source code
+│   ├── data/             # Game data
+│   │   └── wordLists.ts  # Word categories and lists
+│   ├── routes/           # HTTP route handlers
+│   │   ├── handlers.ts   # HTTP request handlers
+│   │   └── router.ts     # URL pattern matching and routing
+│   ├── state/            # Game state management
+│   │   ├── game.ts       # Game logic and state management
+│   │   └── session.ts    # User session handling
+│   ├── static/           # Static assets
+│   │   ├── styles.css    # CSS styling
+│   │   └── keyboard.js   # Keyboard navigation and accessibility
+│   ├── utils/            # Utility functions
+│   │   ├── array.ts      # Array helper functions
+│   │   ├── pattern.ts    # Pattern matching utilities
+│   │   └── result.ts     # Result type for error handling
+│   ├── views/            # HTML templates
+│   │   └── home.ts       # HTML template generation
+│   ├── main.ts           # Application entry point
+│   └── types.ts          # TypeScript type definitions
+├── deno.json             # Deno configuration
+├── deno.lock             # Dependency lock file
+└── README.md             # Project documentation
 ```
 
 ## How to Play
 
-1. Start a new game by choosing a difficulty level
-2. Guess letters by clicking on the virtual keyboard or using your physical keyboard
-3. Try to guess the word before the hangman is completely drawn
-4. Correct guesses reveal the letter in the word
-5. Incorrect guesses draw parts of the hangman
+1. **Objective**: Guess the hidden word before the hangman is complete
+2. **Gameplay**:
+   - Choose a difficulty level (Easy, Medium, Hard)
+   - Select a word category (General, Animals, Countries)
+   - Click on letters to guess them, or use your keyboard
+   - Correct guesses reveal the letter in the word
+   - Incorrect guesses add a part to the hangman figure
+   - You lose when the hangman is complete (7 incorrect guesses)
+   - You win when you reveal the entire word
+3. **Hints**:
+   - Use the hint button to reveal a random letter
+   - Each game allows a limited number of hints
+4. **Statistics**:
+   - Track your wins, streaks, and game time
+   - Try to improve your win rate and best streak
 
-## Running Projects
+## Getting Started
 
 ### Prerequisites
 
-- [Deno](https://deno.land/) (version 1.32.0 or higher)
+- [Deno](https://deno.land/) (version 1.37.0 or higher)
 
 ### Installation & Running
 
 1. Clone the repository
+
    ```bash
-   git clone https://github.com/yourusername/hangman-monorepo.git
-   cd hangman-monorepo
+   git clone https://github.com/yourusername/hangman.git
+   cd hangman
    ```
 
-2. Run an application development server
+2. Run the development server
+
    ```bash
-   # For Hangman app
-   deno task dev:hangman
-   
-   # For Example app
-   deno task dev:example
+   deno task dev
    ```
 
 3. Open your browser and visit:
-   - Hangman app: http://localhost:8000
-   - Example app: http://localhost:8001
+   - <http://localhost:8001>
 
-### Adding New Applications
+### Development
 
-To add a new application to the monorepo:
+The project uses Deno's built-in development server with hot reloading. Any changes you make to the source files will automatically trigger a reload.
 
-1. Create a new directory in `packages/apps/`
-2. Add the new app's files and configuration
-3. Update the root deno.json to include a task for running the new app
-4. Leverage shared packages from `packages/shared/`
+#### Adding New Words
 
-## Deploying Applications
+To add new words to the game, edit the word lists in `src/data/wordLists.ts`:
 
-To deploy applications to Deno Deploy, you can use the following tasks:
-
-```bash
-# Deploy the Hangman application
-deno task deploy:hangman
-
-# Deploy the Example application
-deno task deploy:example
-
-# Deploy all applications in one go
-deno task deploy:all
+```typescript
+// Example: Adding new words to the Animals category
+export const animalsCategory: WordCategory = {
+  name: "Animals",
+  words: {
+    easy: [
+      "CAT", "DOG", "FISH", // existing words...
+      "FOX", "RAT", "ANT"   // new words
+    ] as const,
+    // ...
+  }
+};
 ```
 
 ## Deployment
 
 ### Deno Deploy
 
-Applications in this monorepo can be deployed using [Deno Deploy](https://deno.com/deploy), a serverless hosting platform for Deno applications.
+This application can be deployed using [Deno Deploy](https://deno.com/deploy), a serverless hosting platform for Deno applications.
 
 #### Deployment Process
 
-1. Create a Deno Deploy account at https://deno.com/deploy
+1. Create a Deno Deploy account at <https://deno.com/deploy>
 
 2. Install the Deno Deploy CLI (if not already installed)
+
    ```bash
    deno install -A --no-check -r -f https://deno.land/x/deploy/deployctl.ts
    ```
 
-3. Create a project for each application in the Deno Deploy dashboard
+3. Create a new project in the Deno Deploy dashboard
 
-4. Deploy the applications using the provided tasks:
+4. Deploy the application using the deploy task:
+
    ```bash
-   # Deploy a specific application
-   deno task deploy:hangman
-   deno task deploy:example
-   
-   # Or deploy all applications
-   deno task deploy:all
+   deno task deploy
    ```
 
-5. The `--save-config` flag ensures that any deployment settings are saved to the app's `deno.json` file, preventing configuration warnings.
+5. Alternatively, you can set up GitHub integration for continuous deployment through the Deno Deploy dashboard.
 
-6. Alternatively, you can set up GitHub integration for continuous deployment through the Deno Deploy dashboard.
+#### Application URL
 
-#### Application URLs
+After deployment, your application will be available at:
 
-After deployment, your applications will be available at:
-- Hangman app: `https://hangman.deno.dev`
-- Example app: `https://example-app.deno.dev`
+- `https://hangman.deno.dev` (or your custom domain)
 
-#### Adding Deployment for New Apps
+### Docker Deployment
 
-When adding a new application to the monorepo:
+You can also deploy the application using Docker:
 
-1. Create a deployment directory with its own standalone structure:
+1. Build the Docker image:
+
    ```bash
-   mkdir -p deploy/your-app
+   docker build -t hangman-game .
    ```
 
-2. Create a completely self-contained `main.ts` file in the deployment directory:
-   ```typescript
-   // deploy/your-app/main.ts
-   import * as effection from "jsr:@effection/effection@^3.1.0";
-   import { match } from "jsr:@gabriel/ts-pattern@^5.6.2";
-   
-   // Include all necessary types, functions, handlers, and templates
-   // directly in this file instead of importing from the monorepo
-   
-   // Do not use relative imports from the monorepo structure
-   // Copy all required code into this single file
-   
-   // Run the server with effection
-   effection.main(runServer);
+2. Run the container:
+
+   ```bash
+   docker run -p 8001:8001 hangman-game
    ```
 
-3. Create a `deno.json` file in the deployment directory:
-   ```json
-   {
-     "imports": {
-       "@gabriel/ts-pattern": "jsr:@gabriel/ts-pattern@^5.6.2",
-       "@std/assert": "jsr:@std/assert@1",
-       "@effection/effection": "jsr:@effection/effection@^3.1.0"
-     },
-     "tasks": {
-       "start": "deno run --allow-net --allow-read main.ts"
-     }
-   }
-   ```
+3. Access the application at <http://localhost:8001>
 
-4. Add the directory to the workspace in the root `deno.json`:
-   ```json
-   "workspace": {
-     "members": [
-       "packages/apps/*",
-       "packages/shared/*",
-       "deploy/*"
-     ]
-   }
-   ```
+## Contributing
 
-5. Add a deployment task to the root `deno.json`:
-   ```json
-   "deploy:your-app": "cd deploy/your-app && deno check main.ts && deployctl deploy --project=your-project-name --allow-net --allow-read ."
-   ```
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-6. Update the `deploy:all` task to include your new app.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Word lists compiled from various public domain sources
+- Hangman figure design inspired by classic implementations
+- Built with ❤️ by [Your Name]

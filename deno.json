@@ -1,18 +1,32 @@
 {
-  "project": "hangman-monorepo",
-  "workspace": {
-    "members": [
-      "packages/apps/*",
-      "packages/shared/*"
-    ]
+  "project": "hangman",
+  "entrypoint": "src/main.ts",
+  "include": [
+    "src/routes",
+    "src/state",
+    "src/utils",
+    "src/views",
+    "src/static",
+    "src/data",
+    "src/types.ts",
+    "index.html"
+  ],
+  "tasks": {
+    "dev": "deno run --watch --allow-net --allow-read src/main.ts"
   },
   "imports": {
     "@gabriel/ts-pattern": "jsr:@gabriel/ts-pattern@^5.6.2",
     "@std/assert": "jsr:@std/assert@1",
     "@effection/effection": "jsr:@effection/effection@^3.1.0"
   },
-  "tasks": {
-    "dev": "deno run --allow-net --allow-read --watch packages/apps/hangman/main.ts",
-    "deploy": "cd deploy/hangman && deployctl deploy --project=hangman --allow-net --allow-read main.ts",
+  "deploy": {
+    "project": "5cd54cd6-8a70-4b90-9fc5-729863c41e65",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [
+      "static/**/*"
+    ],
+    "entrypoint": "src/main.ts"
   }
 }
