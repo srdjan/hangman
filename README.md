@@ -2,7 +2,9 @@
 
 A modern, accessible implementation of the classic Hangman word guessing game built with Deno, TypeScript, and HTMX.
 
-![Hangman Game Screenshot](https://via.placeholder.com/800x450.png?text=Hangman+Game+Screenshot)
+<p align="center">
+  <img src="./src/static/screenshot.png" alt="Hangman Game Screenshot">
+</p>
 
 ## Features
 
