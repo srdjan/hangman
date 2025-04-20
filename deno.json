@@ -12,10 +12,7 @@
     "@effection/effection": "jsr:@effection/effection@^3.1.0"
   },
   "tasks": {
-    "dev:hangman": "deno run --allow-net --allow-read --watch packages/apps/hangman/main.ts",
-    "deploy:hangman": "cd deploy/hangman && deployctl deploy --project=hangman --allow-net --allow-read main.ts",
-    "dev:example": "deno run --allow-net --allow-read --watch packages/apps/example/main.ts",
-    "deploy:example": "deployctl deploy --project=example-app --allow-net --allow-read --entrypoint=example-deploy.ts --include=packages/shared example-deploy.ts",
-    "deploy:all": "deno task deploy:hangman && deno task deploy:example"
+    "dev": "deno run --allow-net --allow-read --watch packages/apps/hangman/main.ts",
+    "deploy": "cd deploy/hangman && deployctl deploy --project=hangman --allow-net --allow-read main.ts",
   }
 }

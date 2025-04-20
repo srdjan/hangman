@@ -1,8 +1,9 @@
-import { createGame, processGuess } from "../state/game.ts";
+import { createGame, processGuess, getHint } from "../state/game.ts";
 import { getSession, setSession, createSession } from "../state/session.ts";
 import { homePage, gameComponent } from "../views/home.ts";
 import { GameState } from "../types.ts";
 import { Result, ok } from "../utils/result.ts";
+import { categories } from "../data/wordLists.ts";
 
 const getOrCreateGameSession = (request: Request): Result<[string, GameState]> => {
   const cookies = request.headers.get("cookie") || "";
@@ -64,6 +65,8 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
   try {
     // First check if this is JSON data from hx-vals
     let difficulty: "easy" | "medium" | "hard" = "medium";
+    let category = "General";
+    let hintsAllowed = 1;
     const contentType = request.headers.get("Content-Type");
 
     if (contentType && contentType.includes("application/json")) {
@@ -75,6 +78,12 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
           jsonData.difficulty === "hard")) {
         difficulty = jsonData.difficulty as "easy" | "medium" | "hard";
       }
+      if (jsonData.category) {
+        category = jsonData.category;
+      }
+      if (jsonData.hintsAllowed !== undefined) {
+        hintsAllowed = parseInt(jsonData.hintsAllowed, 10) || 1;
+      }
     } else {
       // From traditional form data
       const formData = await request.formData();
@@ -84,9 +93,19 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
         difficultyValue === "hard") {
         difficulty = difficultyValue as "easy" | "medium" | "hard";
       }
+
+      const categoryValue = formData.get("category");
+      if (categoryValue) {
+        category = categoryValue.toString();
+      }
+
+      const hintsValue = formData.get("hintsAllowed");
+      if (hintsValue) {
+        hintsAllowed = parseInt(hintsValue.toString(), 10) || 1;
+      }
     }
 
-    const gameResult = createGame(difficulty);
+    const gameResult = createGame(difficulty, category, hintsAllowed);
     if (!gameResult.ok) {
       return Promise.resolve(new Response(`Error: ${gameResult.error.message}`, { status: 500 }));
     }
@@ -123,6 +142,34 @@ export const guessHandler = (request: Request, params: Record<string, string>): 
 
   // Process the guess and update the session
   const updatedStateResult = processGuess(gameState, letter);
+
+  if (!updatedStateResult.ok) {
+    return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));
+  }
+
+  setSession(sessionId, updatedStateResult.value);
+
+  const headers = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+  });
+
+  return Promise.resolve(new Response(gameComponent(updatedStateResult.value), { headers }));
+};
+
+/**
+ * Handle hint request
+ */
+export const hintHandler = (request: Request): Promise<Response> => {
+  const sessionResult = getOrCreateGameSession(request);
+  if (!sessionResult.ok) {
+    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+  }
+
+  const [sessionId, gameState] = sessionResult.value;
+
+  // Process the hint and update the session
+  const updatedStateResult = getHint(gameState);
 
   if (!updatedStateResult.ok) {
     return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));

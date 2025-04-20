@@ -7,7 +7,7 @@
   --transition-speed: 300ms;
   --transition-easing: cubic-bezier(0.25, 0.1, 0.25, 1);
   --hover-scale: 1.03;
-  
+
   /* Responsive sizing variables */
   --base-padding: clamp(0.5rem, 3vw, 2rem);
   --font-size-h1: clamp(1.75rem, 5vw, 2.5rem);
@@ -47,7 +47,7 @@ h1 {
   font-weight: 800;
   letter-spacing: -0.05em;
   text-transform: uppercase;
-  text-shadow: 
+  text-shadow:
     0 5px 10px rgba(0, 0, 0, 0.15),
     0 2px 4px rgba(0, 0, 0, 0.2),
     2px 2px 0px #4a6fa5,
@@ -61,7 +61,7 @@ h1 {
 /* Create hover effect for the body container to interact with the header */
 body:hover h1 {
   transform: perspective(500px) rotateX(5deg) translateY(-5px);
-  text-shadow: 
+  text-shadow:
     0 10px 15px rgba(103, 98, 98, 0.2),
     0 4px 6px rgba(0, 0, 0, 0.2),
     3px 3px 0px #5f7ca6,
@@ -102,7 +102,7 @@ body:hover h1::after {
   padding: var(--base-padding);
   background: #f8f9fa;
   border-radius: 1rem;
-  box-shadow: 
+  box-shadow:
     0 10px 20px rgba(0, 0, 0, 0.1),
     0 0 0 1px rgba(0, 0, 0, 0.05);
   transition: transform var(--transition-speed) var(--transition-easing);
@@ -130,7 +130,8 @@ svg {
   background: transparent;
 }
 
-.hangman-figure, .celebrate-figure {
+.hangman-figure,
+.celebrate-figure {
   background: transparent;
 }
 
@@ -219,6 +220,18 @@ button:disabled {
   opacity: 0.7;
 }
 
+button.correct {
+  background: var(--success-color);
+  color: white;
+  opacity: 0.8;
+}
+
+button.incorrect {
+  background: var(--danger-color);
+  color: white;
+  opacity: 0.8;
+}
+
 button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
@@ -233,32 +246,44 @@ button:active:not(:disabled) {
   grid-column: span 3;
 }
 
+/* Game controls */
+.game-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: clamp(1rem, 3vw, 1.5rem);
+}
+
 /* Difficulty selector styles - both traditional and pill-based */
 .difficulty-selector {
   text-align: center;
   margin-top: 1.5rem;
-  display: none; /* Hide the original selector */
+  display: none;
+  /* Hide the original selector */
 }
 
 .difficulty-control {
-  margin-bottom: clamp(1rem, 3vw, 1.5rem);
+  margin-bottom: clamp(0.5rem, 2vw, 1rem);
   text-align: center;
 }
 
-.difficulty-pills {
+.difficulty-pills,
+.category-pills {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: clamp(0.3rem, 1vw, 0.5rem);
-  margin-bottom: clamp(1rem, 3vw, 1.5rem);
 }
 
-.difficulty-pills form {
+.difficulty-pills form,
+.category-pills form {
   margin: 0;
   padding: 0;
   display: contents;
 }
 
-.difficulty-pill {
+.difficulty-pill,
+.category-pill {
   flex: 0 1 auto;
   background: rgba(52, 152, 219, 0.1);
   color: var(--secondary-color);
@@ -272,12 +297,14 @@ button:active:not(:disabled) {
   min-width: 60px;
 }
 
-.difficulty-pill:hover {
+.difficulty-pill:hover,
+.category-pill:hover {
   background: rgba(52, 152, 219, 0.2);
   transform: translateY(-2px);
 }
 
-.difficulty-pill.active {
+.difficulty-pill.active,
+.category-pill.active {
   background: var(--secondary-color);
   color: white;
   box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
@@ -301,6 +328,95 @@ button:active:not(:disabled) {
   box-shadow: 0 2px 8px rgba(231, 76, 60, 0.4);
 }
 
+.category-pill.general.active {
+  background: #8e44ad;
+  border-color: #8e44ad;
+  box-shadow: 0 2px 8px rgba(142, 68, 173, 0.4);
+}
+
+.category-pill.animals.active {
+  background: #16a085;
+  border-color: #16a085;
+  box-shadow: 0 2px 8px rgba(22, 160, 133, 0.4);
+}
+
+.category-pill.countries.active {
+  background: #d35400;
+  border-color: #d35400;
+  box-shadow: 0 2px 8px rgba(211, 84, 0, 0.4);
+}
+
+/* Game statistics */
+.game-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background: rgba(52, 152, 219, 0.05);
+  border: 1px solid rgba(52, 152, 219, 0.1);
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-around;
+}
+
+.stat-box {
+  text-align: center;
+  padding: 0.5rem;
+  min-width: 60px;
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #7f8c8d;
+}
+
+/* Hint button */
+.hint-container {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.hint-button {
+  background: #f1c40f;
+  color: #34495e;
+  border: none;
+  border-radius: 2rem;
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.hint-button:hover:not(:disabled) {
+  background: #f39c12;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.hint-button:disabled {
+  background: #ecf0f1;
+  color: #95a5a6;
+  cursor: not-allowed;
+}
+
+.hint-icon {
+  font-size: 1.2rem;
+}
+
 select {
   padding: 0.5rem;
   border-radius: 0.25rem;
@@ -320,16 +436,16 @@ footer {
   header {
     transform: translateY(1.5rem);
   }
-  
+
   h1 {
     font-size: calc(var(--font-size-h1) * 1.2);
     transform: perspective(500px) rotateX(8deg);
   }
-  
+
   .game-container {
     margin-top: -0.5rem;
   }
-  
+
   footer {
     margin-bottom: clamp(1rem, 3vw, 2rem);
   }
@@ -341,12 +457,12 @@ footer {
   .difficulty-selector {
     margin-top: clamp(1rem, 3vw, 1.5rem);
   }
-  
+
   /* Add extra touch area for better mobile experience */
   button {
     position: relative;
   }
-  
+
   button::after {
     content: '';
     position: absolute;

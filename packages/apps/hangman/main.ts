@@ -1,5 +1,5 @@
 import { createRouter } from "./routes/router.ts";
-import { gameHandler, newGameHandler, guessHandler, staticFileHandler } from "./routes/handlers.ts";
+import { gameHandler, newGameHandler, guessHandler, hintHandler, staticFileHandler } from "./routes/handlers.ts";
 import * as effection from "@effection/effection";
 
 // Setup SIGINT (CTRL+C) handling for clean shutdown
@@ -15,17 +15,18 @@ function setupSignalHandlers(cb: () => void) {
 }
 
 // Define the main function
-const runServer = function*() {
+const runServer = function* () {
   const router = createRouter([
     { path: "/", handler: gameHandler },
     { path: "/new-game", handler: newGameHandler },
     { path: "/guess/:letter", handler: guessHandler },
+    { path: "/hint", handler: hintHandler },
     { path: "/static/*", handler: staticFileHandler },
   ]);
 
   const controller = new AbortController();
   const signal = controller.signal;
-  
+
   try {
     // Setup signal handlers outside effection for clean shutdown
     setupSignalHandlers(() => {
@@ -35,8 +36,9 @@ const runServer = function*() {
     // No need to capture the return value
 
     // Start the server
-    console.log("Hangman server running at http://localhost:8000/");
-    const server = Deno.serve({ port: 8000, signal }, async (req: Request) => {
+    const port = 8001;
+    console.log(`Hangman server running at http://localhost:${port}/`);
+    const server = Deno.serve({ port, signal }, async (req: Request) => {
       const url = new URL(req.url);
       const path = url.pathname;
 
@@ -47,9 +49,9 @@ const runServer = function*() {
         return new Response("Server error", { status: 500 });
       }
     });
-    
+
     // Create a task to monitor the abort signal
-    yield* effection.spawn(function*() {
+    yield* effection.spawn(function* () {
       try {
         while (true) {
           if (signal.aborted) break;
@@ -60,18 +62,18 @@ const runServer = function*() {
         console.error("Error in signal monitor:", error);
       }
     });
-    
+
     // Wait for server to complete naturally or be aborted
     while (!signal.aborted) {
       yield* effection.sleep(1000);
     }
-    
+
     // Server cleanup
     try {
       server.shutdown();
-      
+
       // Clean up signal handlers
-      Deno.removeSignalListener("SIGINT", () => {});
+      Deno.removeSignalListener("SIGINT", () => { });
     } catch (error) {
       console.error("Error during cleanup:", error);
     }

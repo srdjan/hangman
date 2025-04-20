@@ -1,5 +1,6 @@
 import { GameState } from "../types.ts";
 import { match } from "../utils/pattern.ts";
+import { categories } from "../data/wordLists.ts";
 
 export const homePage = (content: string): string => `
 <!DOCTYPE html>
@@ -11,12 +12,50 @@ export const homePage = (content: string): string => `
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/keyboard.js" defer></script>
+
+  <!-- Accessibility features -->
+  <div id="screen-reader-announcer" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
+  <style>
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    /* Animation classes */
+    .correct-guess {
+      animation: pulse-green 0.5s ease-in-out;
+    }
+
+    .incorrect-guess {
+      animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes pulse-green {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+      50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+      20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+  </style>
 </head>
 <body>
   <header></header>
-  
+
   ${content}
-  
+
   <footer>
     <p>Cooked with ❤️ by <a href="https://srdjan.github.io" target="_blank" rel="noopener noreferrer">⊣˚∆˚⊢</a></p>
   </footer>
@@ -26,29 +65,50 @@ export const homePage = (content: string): string => `
 
 export const gameComponent = (state: GameState): string => `
 <div class="game-container" id="game-container">
-  <!-- Difficulty pill selector -->
-  <div class="difficulty-control">
-    <div class="difficulty-pills">
-      <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-        <input type="hidden" name="difficulty" value="easy">
-        <button type="submit" class="difficulty-pill easy ${state.difficulty === 'easy' ? 'active' : ''}">Easy</button>
-      </form>
-      
-      <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-        <input type="hidden" name="difficulty" value="medium">
-        <button type="submit" class="difficulty-pill medium ${state.difficulty === 'medium' ? 'active' : ''}">Medium</button>
-      </form>
-      
-      <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-        <input type="hidden" name="difficulty" value="hard">
-        <button type="submit" class="difficulty-pill hard ${state.difficulty === 'hard' ? 'active' : ''}">Hard</button>
-      </form>
+  <!-- Game controls -->
+  <div class="game-controls">
+    <!-- Difficulty pill selector -->
+    <div class="difficulty-control">
+      <div class="difficulty-pills">
+        <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+          <input type="hidden" name="difficulty" value="easy">
+          <input type="hidden" name="category" value="${state.category}">
+          <button type="submit" class="difficulty-pill easy ${state.difficulty === 'easy' ? 'active' : ''}">Easy</button>
+        </form>
+
+        <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+          <input type="hidden" name="difficulty" value="medium">
+          <input type="hidden" name="category" value="${state.category}">
+          <button type="submit" class="difficulty-pill medium ${state.difficulty === 'medium' ? 'active' : ''}">Medium</button>
+        </form>
+
+        <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+          <input type="hidden" name="difficulty" value="hard">
+          <input type="hidden" name="category" value="${state.category}">
+          <button type="submit" class="difficulty-pill hard ${state.difficulty === 'hard' ? 'active' : ''}">Hard</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Category selector -->
+    <div class="category-control">
+      <div class="category-pills">
+        ${categories.map(category => `
+          <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+            <input type="hidden" name="difficulty" value="${state.difficulty}">
+            <input type="hidden" name="category" value="${category.name}">
+            <button type="submit" class="category-pill ${category.name.toLowerCase()} ${state.category === category.name ? 'active' : ''}">${category.name}</button>
+          </form>
+        `).join('')}
+      </div>
     </div>
   </div>
 
   ${statusDisplay(state)}
+  ${gameStats(state)}
   ${hangmanSvg(state)}
   ${wordDisplay(state)}
+  ${hintButton(state)}
   ${keyboard(state)}
   ${difficultySelector(state)}
 </div>
@@ -66,7 +126,7 @@ export const hangmanSvg = (state: GameState): string => {
           <!-- Base gallows structure (always visible) -->
           <path d="M20 180h160M60 180l-20-140h120l-20 140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
           <path d="M30 40h140" stroke="var(--primary-color)" stroke-width="4" stroke-linecap="round" fill="none" />
-          
+
           <!-- Hangman parts - visible based on wrong guesses -->
           ${wrongGuesses >= 1 ? `<path class="hangman-part visible" d="M100 40v30" fill="none" />` : ''}
           ${wrongGuesses >= 2 ? `<g class="hangman-part visible" fill="none">
@@ -97,7 +157,7 @@ export const celebrationSvg = (): string => `
       <path d="M40 120l5 5-5 5 5-5-5-5" stroke="#FFE66D" stroke-width="2" />
       <path d="M160 140l5 5-5 5 5-5-5-5" stroke="#4ECDC4" stroke-width="2" />
     </g>
-    
+
     <!-- Animated stick figure with happy face -->
     <g>
       <circle cx="100" cy="70" r="15" stroke="green" stroke-width="4" fill="none" />
@@ -105,7 +165,7 @@ export const celebrationSvg = (): string => `
       <circle cx="93" cy="65" r="2" fill="green" />
       <circle cx="107" cy="65" r="2" fill="green" />
     </g>
-    
+
     <path d="M100 85v50" stroke="green" stroke-width="4" stroke-linecap="round" />
     <path d="M100 95l-30 -20" stroke="green" stroke-width="4" stroke-linecap="round" />
     <path d="M100 95l30 -20" stroke="green" stroke-width="4" stroke-linecap="round" />
@@ -148,19 +208,33 @@ export const keyboard = (state: GameState): string => {
 
   return `
   <div class="keyboard ${isGameOver ? 'game-over' : ''}" role="group" aria-label="Keyboard">
-    ${[...letters].map(letter => `
-      <button 
+    ${[...letters].map(letter => {
+    const isGuessed = state.guessedLetters.has(letter);
+    const isCorrect = state.word.includes(letter) && isGuessed;
+    const isIncorrect = !state.word.includes(letter) && isGuessed;
+    let ariaLabel = letter;
+
+    if (isCorrect) {
+      ariaLabel = `${letter}, correct guess`;
+    } else if (isIncorrect) {
+      ariaLabel = `${letter}, incorrect guess`;
+    }
+
+    return `
+      <button
         data-letter="${letter}"
-        aria-label="${letter}"
-        ${state.guessedLetters.has(letter) ? 'disabled' : ''}
+        aria-label="${ariaLabel}"
+        aria-pressed="${isGuessed ? 'true' : 'false'}"
+        ${isGuessed ? 'disabled' : ''}
         ${isGameOver ? 'disabled' : ''}
+        class="${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''}"
         hx-post="/guess/${letter}"
         hx-target="#game-container"
         hx-swap="outerHTML"
       >${letter}</button>
-    `).join('')}
-    <button 
-      class="restart" 
+    `}).join('')}
+    <button
+      class="restart"
       aria-label="New Game"
       hx-post="/new-game"
       hx-target="#game-container"
@@ -173,8 +247,8 @@ export const keyboard = (state: GameState): string => {
 export const difficultySelector = (state: GameState): string => `
 <div class="difficulty-selector">
   <label for="difficulty">Difficulty: </label>
-  <select 
-    id="difficulty" 
+  <select
+    id="difficulty"
     aria-label="Select difficulty level"
     hx-post="/new-game"
     hx-target="#game-container"
@@ -187,3 +261,68 @@ export const difficultySelector = (state: GameState): string => `
   </select>
 </div>
 `;
+
+/**
+ * Display game statistics
+ */
+export const gameStats = (state: GameState): string => {
+  const { statistics } = state;
+  const gameTime = state.endTime ? Math.round((state.endTime - state.startTime) / 1000) : 0;
+
+  return `
+  <div class="game-stats" aria-label="Game Statistics">
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-value">${statistics.gamesPlayed}</div>
+        <div class="stat-label">Games</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">${statistics.gamesWon}</div>
+        <div class="stat-label">Wins</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">${Math.round((statistics.gamesWon / (statistics.gamesPlayed || 1)) * 100)}%</div>
+        <div class="stat-label">Win Rate</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-value">${statistics.currentStreak}</div>
+        <div class="stat-label">Streak</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">${statistics.bestStreak}</div>
+        <div class="stat-label">Best</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">${state.status !== "playing" ? gameTime : ""}</div>
+        <div class="stat-label">${state.status !== "playing" ? "Seconds" : ""}</div>
+      </div>
+    </div>
+  </div>
+  `;
+};
+
+/**
+ * Hint button component
+ */
+export const hintButton = (state: GameState): string => {
+  const isDisabled = state.status !== "playing" || state.hintsUsed >= state.hintsAllowed;
+  const hintsLeft = state.hintsAllowed - state.hintsUsed;
+
+  return `
+  <div class="hint-container">
+    <button
+      class="hint-button ${isDisabled ? 'disabled' : ''}"
+      ${isDisabled ? 'disabled' : ''}
+      hx-post="/hint"
+      hx-target="#game-container"
+      hx-swap="outerHTML"
+      aria-label="Get a hint. ${hintsLeft} hint${hintsLeft !== 1 ? 's' : ''} remaining."
+    >
+      <span class="hint-icon">💡</span>
+      <span class="hint-text">Hint (${hintsLeft} left)</span>
+    </button>
+  </div>
+  `;
+};
