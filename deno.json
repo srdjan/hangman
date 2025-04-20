@@ -12,12 +12,13 @@
     "index.html"
   ],
   "tasks": {
-    "dev": "deno run --watch --allow-net --allow-read src/main.ts"
+    "dev": "deno run --watch --allow-net --allow-read --allow-env deploy.ts",
+    "deploy": "deployctl deploy --project=hangman --allow-net --allow-read --allow-env --entrypoint=deploy.ts"
   },
   "imports": {
     "@gabriel/ts-pattern": "jsr:@gabriel/ts-pattern@^5.6.2",
     "@std/assert": "jsr:@std/assert@1",
-    "@effection/effection": "jsr:@effection/effection@^3.1.0"
+    "@effection/effection": "jsr:@effection/effection@^3.4.0"
   },
   "deploy": {
     "project": "5cd54cd6-8a70-4b90-9fc5-729863c41e65",
@@ -25,8 +26,8 @@
       "**/node_modules"
     ],
     "include": [
-      "static/**/*"
-    ],
-    "entrypoint": "src/main.ts"
+      "src/**/*",
+      "deploy.ts"
+    ]
   }
 }
