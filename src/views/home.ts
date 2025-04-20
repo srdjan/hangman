@@ -65,52 +65,86 @@ export const homePage = (content: string): string => `
 
 export const gameComponent = (state: GameState): string => `
 <div class="game-container" id="game-container">
-  <!-- Game controls -->
-  <div class="game-controls">
-    <!-- Difficulty pill selector -->
-    <div class="difficulty-control">
-      <div class="difficulty-pills">
-        <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-          <input type="hidden" name="difficulty" value="easy">
-          <input type="hidden" name="category" value="${state.category}">
-          <button type="submit" class="difficulty-pill easy ${state.difficulty === 'easy' ? 'active' : ''}">Easy</button>
-        </form>
-
-        <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-          <input type="hidden" name="difficulty" value="medium">
-          <input type="hidden" name="category" value="${state.category}">
-          <button type="submit" class="difficulty-pill medium ${state.difficulty === 'medium' ? 'active' : ''}">Medium</button>
-        </form>
-
-        <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-          <input type="hidden" name="difficulty" value="hard">
-          <input type="hidden" name="category" value="${state.category}">
-          <button type="submit" class="difficulty-pill hard ${state.difficulty === 'hard' ? 'active' : ''}">Hard</button>
-        </form>
-      </div>
+  <!-- Top navigation bar -->
+  <div class="game-header">
+    <div class="game-title">
+      <h2>Hangman</h2>
     </div>
 
-    <!-- Category selector -->
-    <div class="category-control">
-      <div class="category-pills">
-        ${categories.map(category => `
+    <div class="game-nav">
+      <!-- Difficulty selector -->
+      <div class="difficulty-control">
+        <div class="difficulty-pills">
           <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-            <input type="hidden" name="difficulty" value="${state.difficulty}">
-            <input type="hidden" name="category" value="${category.name}">
-            <button type="submit" class="category-pill ${category.name.toLowerCase()} ${state.category === category.name ? 'active' : ''}">${category.name}</button>
+            <input type="hidden" name="difficulty" value="easy">
+            <input type="hidden" name="category" value="${state.category}">
+            <button type="submit" class="difficulty-pill easy ${state.difficulty === 'easy' ? 'active' : ''}">Easy</button>
           </form>
-        `).join('')}
+
+          <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+            <input type="hidden" name="difficulty" value="medium">
+            <input type="hidden" name="category" value="${state.category}">
+            <button type="submit" class="difficulty-pill medium ${state.difficulty === 'medium' ? 'active' : ''}">Medium</button>
+          </form>
+
+          <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+            <input type="hidden" name="difficulty" value="hard">
+            <input type="hidden" name="category" value="${state.category}">
+            <button type="submit" class="difficulty-pill hard ${state.difficulty === 'hard' ? 'active' : ''}">Hard</button>
+          </form>
+        </div>
       </div>
+
+      <!-- Category dropdown -->
+      <div class="category-dropdown">
+        <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
+          <input type="hidden" name="difficulty" value="${state.difficulty}">
+          <select
+            id="category-select"
+            name="category"
+            aria-label="Select word category"
+            hx-trigger="change"
+          >
+            ${categories.map(category => `
+              <option value="${category.name}" ${state.category === category.name ? 'selected' : ''}>${category.name}</option>
+            `).join('')}
+          </select>
+        </form>
+      </div>
+
+      <!-- Dashboard toggle button -->
+      <button
+        class="dashboard-toggle"
+        aria-label="Toggle statistics dashboard"
+        onclick="document.getElementById('game-stats').classList.toggle('visible');"
+      >
+        <span class="dashboard-icon">📊</span>
+      </button>
     </div>
   </div>
 
+  <!-- Game status -->
   ${statusDisplay(state)}
-  ${gameStats(state)}
-  ${hangmanSvg(state)}
-  ${wordDisplay(state)}
-  ${hintButton(state)}
+
+  <!-- Main game area -->
+  <div class="game-main">
+    <!-- Game statistics (hidden by default) -->
+    <div id="game-stats" class="game-stats">
+      ${gameStatsContent(state)}
+    </div>
+
+    <!-- Hangman figure -->
+    ${hangmanSvg(state)}
+
+    <!-- Word display -->
+    ${wordDisplay(state)}
+
+    <!-- Hint button -->
+    ${hintButton(state)}
+  </div>
+
+  <!-- Keyboard -->
   ${keyboard(state)}
-  ${difficultySelector(state)}
 </div>
 `;
 
@@ -263,14 +297,14 @@ export const difficultySelector = (state: GameState): string => `
 `;
 
 /**
- * Display game statistics
+ * Display game statistics content
  */
-export const gameStats = (state: GameState): string => {
+export const gameStatsContent = (state: GameState): string => {
   const { statistics } = state;
   const gameTime = state.endTime ? Math.round((state.endTime - state.startTime) / 1000) : 0;
 
   return `
-  <div class="game-stats" aria-label="Game Statistics">
+    <h3>Game Statistics</h3>
     <div class="stats-row">
       <div class="stat-box">
         <div class="stat-value">${statistics.gamesPlayed}</div>
@@ -299,6 +333,16 @@ export const gameStats = (state: GameState): string => {
         <div class="stat-label">${state.status !== "playing" ? "Seconds" : ""}</div>
       </div>
     </div>
+  `;
+};
+
+/**
+ * Display game statistics (for backward compatibility)
+ */
+export const gameStats = (state: GameState): string => {
+  return `
+  <div class="game-stats" aria-label="Game Statistics">
+    ${gameStatsContent(state)}
   </div>
   `;
 };
