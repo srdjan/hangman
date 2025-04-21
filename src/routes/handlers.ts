@@ -64,45 +64,71 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
   const [sessionId, _] = sessionResult.value;
 
   try {
-    // First check if this is JSON data from hx-vals
+    // Default values
     let difficulty: "easy" | "medium" | "hard" = "medium";
     let category = "General";
     let hintsAllowed = 1;
-    const contentType = request.headers.get("Content-Type");
 
-    if (contentType && contentType.includes("application/json")) {
-      // From pill buttons using hx-vals
-      const jsonData = await request.json();
-      if (jsonData.difficulty &&
-        (jsonData.difficulty === "easy" ||
-          jsonData.difficulty === "medium" ||
-          jsonData.difficulty === "hard")) {
-        difficulty = jsonData.difficulty as "easy" | "medium" | "hard";
-      }
-      if (jsonData.category) {
-        category = jsonData.category;
-      }
-      if (jsonData.hintsAllowed !== undefined) {
-        hintsAllowed = parseInt(jsonData.hintsAllowed, 10) || 1;
-      }
-    } else {
-      // From traditional form data
-      const formData = await request.formData();
-      const difficultyValue = formData.get("difficulty");
-      if (difficultyValue === "easy" ||
-        difficultyValue === "medium" ||
-        difficultyValue === "hard") {
-        difficulty = difficultyValue as "easy" | "medium" | "hard";
-      }
+    // Check for URL parameters first
+    const url = new URL(request.url);
+    const difficultyParam = url.searchParams.get("difficulty");
+    if (difficultyParam === "easy" || difficultyParam === "medium" || difficultyParam === "hard") {
+      difficulty = difficultyParam;
+    }
 
-      const categoryValue = formData.get("category");
-      if (categoryValue) {
-        category = categoryValue.toString();
-      }
+    const categoryParam = url.searchParams.get("category");
+    if (categoryParam) {
+      category = categoryParam;
+    }
 
-      const hintsValue = formData.get("hintsAllowed");
-      if (hintsValue) {
-        hintsAllowed = parseInt(hintsValue.toString(), 10) || 1;
+    const hintsParam = url.searchParams.get("hintsAllowed");
+    if (hintsParam) {
+      hintsAllowed = parseInt(hintsParam, 10) || 1;
+    }
+
+    // If no URL parameters, check for form data or JSON
+    if (!url.searchParams.has("difficulty") && !url.searchParams.has("category")) {
+      const contentType = request.headers.get("Content-Type");
+
+      try {
+        if (contentType && contentType.includes("application/json")) {
+          // From pill buttons using hx-vals
+          const jsonData = await request.json();
+          if (jsonData.difficulty &&
+            (jsonData.difficulty === "easy" ||
+              jsonData.difficulty === "medium" ||
+              jsonData.difficulty === "hard")) {
+            difficulty = jsonData.difficulty as "easy" | "medium" | "hard";
+          }
+          if (jsonData.category) {
+            category = jsonData.category;
+          }
+          if (jsonData.hintsAllowed !== undefined) {
+            hintsAllowed = parseInt(jsonData.hintsAllowed.toString(), 10) || 1;
+          }
+        } else {
+          // From traditional form data
+          const formData = await request.formData();
+          const difficultyValue = formData.get("difficulty");
+          if (difficultyValue === "easy" ||
+            difficultyValue === "medium" ||
+            difficultyValue === "hard") {
+            difficulty = difficultyValue as "easy" | "medium" | "hard";
+          }
+
+          const categoryValue = formData.get("category");
+          if (categoryValue) {
+            category = categoryValue.toString();
+          }
+
+          const hintsValue = formData.get("hintsAllowed");
+          if (hintsValue) {
+            hintsAllowed = parseInt(hintsValue.toString(), 10) || 1;
+          }
+        }
+      } catch (_error) {
+        // If there's an error parsing the request body, use the defaults
+        console.log("Error parsing request body, using default values");
       }
     }
 
@@ -141,8 +167,31 @@ export const guessHandler = (request: Request, params: Record<string, string>): 
 
   const [sessionId, gameState] = sessionResult.value;
 
+  // Get category and difficulty from URL parameters if available
+  let category = gameState.category;
+  let difficulty = gameState.difficulty;
+
+  // Parse URL parameters
+  const url = new URL(request.url);
+  const categoryParam = url.searchParams.get("category");
+  if (categoryParam) {
+    category = categoryParam;
+  }
+
+  const difficultyParam = url.searchParams.get("difficulty");
+  if (difficultyParam === "easy" || difficultyParam === "medium" || difficultyParam === "hard") {
+    difficulty = difficultyParam as "easy" | "medium" | "hard";
+  }
+
+  // Update the game state with the current category and difficulty
+  const updatedGameState = {
+    ...gameState,
+    category,
+    difficulty
+  };
+
   // Process the guess and update the session
-  const updatedStateResult = processGuess(gameState, letter);
+  const updatedStateResult = processGuess(updatedGameState, letter);
 
   if (!updatedStateResult.ok) {
     return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));
@@ -169,8 +218,31 @@ export const hintHandler = (request: Request): Promise<Response> => {
 
   const [sessionId, gameState] = sessionResult.value;
 
+  // Get category and difficulty from URL parameters if available
+  let category = gameState.category;
+  let difficulty = gameState.difficulty;
+
+  // Parse URL parameters
+  const url = new URL(request.url);
+  const categoryParam = url.searchParams.get("category");
+  if (categoryParam) {
+    category = categoryParam;
+  }
+
+  const difficultyParam = url.searchParams.get("difficulty");
+  if (difficultyParam === "easy" || difficultyParam === "medium" || difficultyParam === "hard") {
+    difficulty = difficultyParam as "easy" | "medium" | "hard";
+  }
+
+  // Update the game state with the current category and difficulty
+  const updatedGameState = {
+    ...gameState,
+    category,
+    difficulty
+  };
+
   // Process the hint and update the session
-  const updatedStateResult = getHint(gameState);
+  const updatedStateResult = getHint(updatedGameState);
 
   if (!updatedStateResult.ok) {
     return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));

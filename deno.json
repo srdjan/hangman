@@ -1,6 +1,6 @@
 {
   "project": "hangman",
-  "entrypoint": "src/main.ts",
+  "entrypoint": "src/deploy.ts",
   "include": [
     "src/routes",
     "src/state",
