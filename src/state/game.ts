@@ -1,6 +1,6 @@
-import { WordDifficulty, GameState, HintResult } from "../types.ts";
+import { getCategoryByName } from "../data/wordLists.ts";
+import { WordDifficulty, GameState } from "../types.ts";
 import { Result, ok, err } from "../utils/result.ts";
-import { defaultCategory, getCategoryByName } from "../data/wordLists.ts";
 
 /**
  * Select a random word from the appropriate word list using type assertion
