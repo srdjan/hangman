@@ -109,7 +109,7 @@ body:hover h1::after {
   position: relative;
   z-index: 2;
   box-sizing: border-box;
-  margin-top: -1rem;
+  margin-top: -2rem;
   backdrop-filter: blur(5px);
 }
 
@@ -173,7 +173,7 @@ svg {
   margin: 1rem 0;
   font-size: 1.2rem;
   color: var(--text-color);
-  height: 1.5em;
+  height: 1em;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -275,7 +275,7 @@ button:active:not(:disabled) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
   position: relative;
 }
 
@@ -473,8 +473,8 @@ button:active:not(:disabled) {
   /* Hidden by default */
   flex-direction: column;
   gap: 0.5rem;
-  margin: 1rem 0;
-  padding: 1rem;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
   border-radius: 0.5rem;
   background: rgba(52, 152, 219, 0.05);
   border: 1px solid rgba(52, 152, 219, 0.1);
@@ -534,7 +534,7 @@ button:active:not(:disabled) {
 .hint-container {
   display: flex;
   justify-content: center;
-  margin: 1rem 0;
+  /* margin: 1rem 0; */
 }
 
 .hint-button {
@@ -576,7 +576,7 @@ select {
 }
 
 footer {
-  margin-top: 3rem;
+  margin-top: 1rem;
   color: #666;
   font-size: 0.9rem;
   text-align: center;
@@ -593,7 +593,7 @@ footer {
   }
 
   .game-container {
-    margin-top: -0.5rem;
+    margin-top: -1rem;
     padding: 0.8rem;
   }
 

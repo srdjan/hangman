@@ -376,7 +376,7 @@ body {
 .game-container {
   background: #f8f9fa;
   border-radius: 1rem;
-  padding: 1.5rem;
+  padding: 0.5rem;
   max-width: 800px;
   margin: 0 auto;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);

@@ -1,7 +1,7 @@
 // This file is used as the entrypoint for Deno Deploy
 
 // Import dependencies using direct URLs for Deno Deploy
-import * as effection from "@effection/effection";
+import * as effection from "jsr:@effection/effection";
 import { createRouter } from "./src/routes/router.ts";
 import { gameHandler, newGameHandler, guessHandler, hintHandler, staticFileHandler } from "./src/routes/handlers.ts";
 

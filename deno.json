@@ -1,6 +1,6 @@
 {
   "project": "hangman",
-  "entrypoint": "src/deploy.ts",
+  "entrypoint": "src/main.ts",
   "include": [
     "src/routes",
     "src/state",
@@ -12,8 +12,8 @@
     "index.html"
   ],
   "tasks": {
-    "dev": "deno run --watch --allow-net --allow-read --allow-env deploy.ts",
-    "deploy": "deployctl deploy --project=hangman --allow-net --allow-read --allow-env --entrypoint=deploy.ts"
+    "dev": "deno run --watch --allow-net --allow-read --allow-env main.ts",
+    "deploy": "deployctl deploy --project=hangman --allow-net --allow-read --allow-env --entrypoint=main.ts"
   },
   "imports": {
     "@gabriel/ts-pattern": "jsr:@gabriel/ts-pattern@^5.6.2",
@@ -27,7 +27,7 @@
     ],
     "include": [
       "src/**/*",
-      "deploy.ts"
+      "main.ts"
     ]
   }
 }
