@@ -195,4 +195,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ##
 
-<p align="center">Made with ❤️ by <a href="https://srdjan.github.io" target="_blank" rel="noopener noreferrer">⊣˚∆˚⊢</a></p>
+**Crafted with ❤️ by [⊣˚∆˚⊢](https://srdjan.github.io)**
