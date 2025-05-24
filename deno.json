@@ -16,7 +16,7 @@
     "deploy": "deployctl deploy --project=hangman --allow-net --allow-read --allow-env --entrypoint=main.ts"
   },
   "imports": {
-    "@gabriel/ts-pattern": "jsr:@gabriel/ts-pattern@^5.6.2",
+    "@gabriel/ ": "jsr:@gabriel/ts-pattern@^5.6.2",
     "@std/assert": "jsr:@std/assert@1",
     "@effection/effection": "jsr:@effection/effection@^3.4.0"
   },
