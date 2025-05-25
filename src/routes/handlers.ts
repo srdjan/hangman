@@ -1,7 +1,7 @@
-import { createGame, processGuess, getHint } from "../state/game.ts";
+import { createGame, processGuess, getHint, createTwoPlayerGame, processTwoPlayerGuess } from "../state/game.ts";
 import { getSession, setSession, createSession } from "../state/session.ts";
-import { homePage, gameComponent } from "../views/home.ts";
-import { GameState } from "../types.ts";
+import { homePage, gameComponent, twoPlayerGameComponent, gameModeSelector } from "../views/home.ts";
+import { GameState, TwoPlayerGameState, WordDifficulty } from "../types.ts";
 import { Result, ok } from "../utils/result.ts";
 // Import categories if needed for validation
 // import { categories } from "../data/wordLists.ts";
@@ -34,21 +34,35 @@ const getOrCreateGameSession = (request: Request): Result<[string, GameState]> =
 };
 
 export const gameHandler = (request: Request): Promise<Response> => {
-  const sessionResult = getOrCreateGameSession(request);
+  // Check if this is a request for a specific game mode
+  const url = new URL(request.url);
+  const mode = url.searchParams.get("mode");
 
-  if (!sessionResult.ok) {
-    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+  if (mode === "single") {
+    // Start single player game
+    const sessionResult = getOrCreateGameSession(request);
+
+    if (!sessionResult.ok) {
+      return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+    }
+
+    const [sessionId, gameState] = sessionResult.value;
+
+    const headers = new Headers({
+      "Content-Type": "text/html; charset=utf-8",
+      "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+    });
+
+    const content = gameComponent(gameState);
+    return Promise.resolve(new Response(homePage(content), { headers }));
+  } else {
+    // Show game mode selector by default
+    const content = gameModeSelector();
+    const headers = new Headers({
+      "Content-Type": "text/html; charset=utf-8"
+    });
+    return Promise.resolve(new Response(homePage(content), { headers }));
   }
-
-  const [sessionId, gameState] = sessionResult.value;
-
-  const headers = new Headers({
-    "Content-Type": "text/html; charset=utf-8",
-    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-  });
-
-  const content = gameComponent(gameState);
-  return Promise.resolve(new Response(homePage(content), { headers }));
 };
 
 /**
@@ -455,3 +469,160 @@ button:disabled {
     return "/* Error loading CSS */";
   }
 }
+
+/**
+ * Helper function to get or create two-player game session
+ */
+const getOrCreateTwoPlayerGameSession = (request: Request): Result<[string, TwoPlayerGameState]> => {
+  const cookies = request.headers.get("cookie") || "";
+  const sessionCookie = cookies
+    .split(";")
+    .map(c => c.trim())
+    .find(c => c.startsWith("hangman_two_player_session="));
+
+  let sessionId = sessionCookie?.split("=")[1];
+  let gameState: TwoPlayerGameState | undefined;
+
+  if (sessionId) {
+    const sessionData = getSession(sessionId);
+    // Check if it's a two-player game state by checking for specific properties
+    if (sessionData &&
+      typeof sessionData === 'object' &&
+      'player1' in sessionData &&
+      'player2' in sessionData &&
+      'currentTurn' in sessionData &&
+      'gameStatus' in sessionData) {
+      gameState = sessionData as unknown as TwoPlayerGameState;
+    }
+  }
+
+  if (!sessionId || !gameState) {
+    const gameResult = createTwoPlayerGame();
+    if (!gameResult.ok) {
+      return gameResult;
+    }
+
+    gameState = gameResult.value;
+    sessionId = createSession(gameState as unknown as GameState); // Type assertion needed for session storage
+  }
+
+  return ok([sessionId, gameState]);
+};
+
+/**
+ * Handle two-player game requests
+ */
+export const twoPlayerGameHandler = (request: Request): Promise<Response> => {
+  const sessionResult = getOrCreateTwoPlayerGameSession(request);
+
+  if (!sessionResult.ok) {
+    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+  }
+
+  const [sessionId, gameState] = sessionResult.value;
+
+  const headers = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Set-Cookie": `hangman_two_player_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+  });
+
+  const content = twoPlayerGameComponent(gameState);
+  return Promise.resolve(new Response(homePage(content), { headers }));
+};
+
+/**
+ * Handle new two-player game requests
+ */
+export const newTwoPlayerGameHandler = (request: Request): Promise<Response> => {
+  try {
+    const url = new URL(request.url);
+    const difficulty = (url.searchParams.get("difficulty") || "medium") as WordDifficulty;
+    const category = url.searchParams.get("category") || "General";
+    const player1Name = url.searchParams.get("player1") || "Player 1";
+    const player2Name = url.searchParams.get("player2") || "Player 2";
+    const hintsAllowed = parseInt(url.searchParams.get("hints") || "1");
+
+    // Get session ID from cookies
+    const cookies = request.headers.get("cookie") || "";
+    const sessionCookie = cookies
+      .split(";")
+      .map(c => c.trim())
+      .find(c => c.startsWith("hangman_two_player_session="));
+
+    let sessionId = sessionCookie?.split("=")[1];
+
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+    }
+
+    const gameResult = createTwoPlayerGame(player1Name, player2Name, difficulty, category, hintsAllowed);
+    if (!gameResult.ok) {
+      return Promise.resolve(new Response(`Error: ${gameResult.error.message}`, { status: 500 }));
+    }
+
+    setSession(sessionId, gameResult.value as unknown as GameState); // Type assertion needed for session storage
+
+    const headers = new Headers({
+      "Content-Type": "text/html; charset=utf-8",
+      "Set-Cookie": `hangman_two_player_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+    });
+
+    return Promise.resolve(new Response(twoPlayerGameComponent(gameResult.value), { headers }));
+  } catch (error) {
+    console.error("Error in newTwoPlayerGameHandler:", error);
+    return Promise.resolve(new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 }));
+  }
+};
+
+/**
+ * Handle two-player guess requests
+ */
+export const twoPlayerGuessHandler = (request: Request, params: Record<string, string>): Promise<Response> => {
+  try {
+    const letter = params.letter?.toUpperCase();
+    if (!letter) {
+      return Promise.resolve(new Response("No letter provided", { status: 400 }));
+    }
+
+    // Get session from cookies
+    const cookies = request.headers.get("cookie") || "";
+    const sessionCookie = cookies
+      .split(";")
+      .map(c => c.trim())
+      .find(c => c.startsWith("hangman_two_player_session="));
+
+    const sessionId = sessionCookie?.split("=")[1];
+    if (!sessionId) {
+      return Promise.resolve(new Response("No session found", { status: 400 }));
+    }
+
+    const sessionData = getSession(sessionId);
+    if (!sessionData ||
+      !('player1' in sessionData) ||
+      !('player2' in sessionData) ||
+      !('currentTurn' in sessionData)) {
+      return Promise.resolve(new Response("Invalid session", { status: 400 }));
+    }
+
+    const gameState = sessionData as unknown as TwoPlayerGameState;
+
+    // Process the guess and update the session
+    const updatedStateResult = processTwoPlayerGuess(gameState, letter);
+
+    if (!updatedStateResult.ok) {
+      return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));
+    }
+
+    setSession(sessionId, updatedStateResult.value as unknown as GameState);
+
+    const headers = new Headers({
+      "Content-Type": "text/html; charset=utf-8",
+      "Set-Cookie": `hangman_two_player_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+    });
+
+    return Promise.resolve(new Response(twoPlayerGameComponent(updatedStateResult.value), { headers }));
+  } catch (error) {
+    console.error("Error in twoPlayerGuessHandler:", error);
+    return Promise.resolve(new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 }));
+  }
+};

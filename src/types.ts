@@ -61,3 +61,67 @@ export type HintResult =
   | { readonly kind: "revealed"; readonly letter: string }
   | { readonly kind: "noHintsLeft"; readonly hintsUsed: number; readonly hintsAllowed: number }
   | { readonly kind: "allLettersRevealed"; readonly word: string };
+
+/**
+ * Define player identifier type
+ */
+export type Player = "player1" | "player2";
+
+/**
+ * Define two-player game status
+ */
+export type TwoPlayerGameStatus =
+  | "playing"
+  | "player1Won"
+  | "player2Won"
+  | "bothLost"
+  | "gameOver";
+
+/**
+ * Define individual player state within a two-player game
+ */
+export interface PlayerGameState {
+  readonly playerId: Player;
+  readonly playerName: string;
+  readonly word: string;
+  readonly guessedLetters: ReadonlySet<string>;
+  readonly wrongGuesses: number;
+  readonly maxWrong: number;
+  readonly status: GameStatus;
+  readonly difficulty: WordDifficulty;
+  readonly category: string;
+  readonly hintsUsed: number;
+  readonly hintsAllowed: number;
+  readonly startTime: number;
+  readonly endTime: number | null;
+}
+
+/**
+ * Define two-player game state
+ */
+export interface TwoPlayerGameState {
+  readonly id: string;
+  readonly player1: PlayerGameState;
+  readonly player2: PlayerGameState;
+  readonly currentTurn: Player;
+  readonly gameStatus: TwoPlayerGameStatus;
+  readonly roundNumber: number;
+  readonly scores: {
+    readonly player1: number;
+    readonly player2: number;
+  };
+  readonly startTime: number;
+  readonly endTime: number | null;
+}
+
+/**
+ * Define two-player guess result type
+ */
+export type TwoPlayerGuessResult =
+  | { readonly kind: "correct"; readonly player: Player; readonly letter: string }
+  | { readonly kind: "incorrect"; readonly player: Player; readonly letter: string }
+  | { readonly kind: "alreadyGuessed"; readonly player: Player; readonly letter: string }
+  | { readonly kind: "player1Won"; readonly word: string }
+  | { readonly kind: "player2Won"; readonly word: string }
+  | { readonly kind: "bothLost"; readonly player1Word: string; readonly player2Word: string }
+  | { readonly kind: "turnSwitched"; readonly newTurn: Player };

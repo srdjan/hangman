@@ -666,3 +666,435 @@ footer {
     z-index: -1;
   }
 }
+
+/* Two-Player Game Styles */
+.two-player-game-container {
+  width: 100%;
+  max-width: 1200px;
+  padding: var(--base-padding);
+  background: #f8f9fa;
+  border-radius: 1rem;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transition: transform var(--transition-speed) var(--transition-easing);
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  margin-top: -2rem;
+  backdrop-filter: blur(5px);
+}
+
+.two-player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(52, 152, 219, 0.2);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.two-player-header .game-title h2 {
+  margin: 0;
+  color: var(--primary-color);
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+}
+
+.turn-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+}
+
+.current-turn {
+  padding: 0.3rem 0.8rem;
+  border-radius: 1rem;
+  background: rgba(52, 152, 219, 0.1);
+  color: var(--secondary-color);
+  transition: all 0.3s ease;
+}
+
+.current-turn.active {
+  background: var(--secondary-color);
+  color: white;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
+  transform: scale(1.05);
+}
+
+.turn-divider {
+  color: #bdc3c7;
+  font-weight: normal;
+}
+
+.score-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+  color: var(--primary-color);
+}
+
+.score-divider {
+  color: #bdc3c7;
+  font-weight: normal;
+}
+
+.two-player-main {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  min-height: 400px;
+}
+
+.player-panel {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 0.8rem;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.player-panel.current-player {
+  border-color: var(--secondary-color);
+  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.2);
+  transform: translateY(-2px);
+}
+
+.game-divider {
+  width: 3px;
+  background: linear-gradient(to bottom,
+      transparent 0%,
+      var(--secondary-color) 20%,
+      var(--secondary-color) 80%,
+      transparent 100%);
+  border-radius: 2px;
+  margin: 1rem 0;
+}
+
+.player-game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  height: 100%;
+}
+
+.player-header {
+  text-align: center;
+  width: 100%;
+}
+
+.player-header h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--primary-color);
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+}
+
+.player-status {
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.player-hangman {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 200px;
+}
+
+.player-hangman .hangman-display {
+  width: 100%;
+  max-width: 180px;
+}
+
+.player-word {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.player-word .word-display {
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  gap: clamp(0.3rem, 1.5vw, 0.8rem);
+}
+
+.player-wrong-guesses {
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  color: var(--text-color);
+  text-align: center;
+}
+
+.wrong-label {
+  font-weight: 500;
+}
+
+.wrong-count {
+  font-weight: 700;
+  color: var(--danger-color);
+}
+
+/* Shared input area styles */
+.shared-input-area {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 0.8rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.input-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.input-header h4 {
+  margin: 0;
+  color: var(--primary-color);
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  font-weight: 600;
+}
+
+/* Two-player game over styles */
+.two-player-game-over {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 0.8rem;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-top: 1rem;
+}
+
+.two-player-game-over.win {
+  background: rgba(46, 204, 113, 0.1);
+  border: 2px solid var(--success-color);
+}
+
+.two-player-game-over.lose {
+  background: rgba(231, 76, 60, 0.1);
+  border: 2px solid var(--danger-color);
+}
+
+.game-over-message {
+  font-size: clamp(1.1rem, 3vw, 1.4rem);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+}
+
+.final-scores {
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+/* Mobile responsiveness for two-player mode */
+@media (max-width: 768px) {
+  .two-player-game-container {
+    margin-top: -1rem;
+    padding: 0.8rem;
+  }
+
+  .two-player-header {
+    flex-direction: column;
+    gap: 0.8rem;
+    align-items: center;
+    text-align: center;
+  }
+
+  .two-player-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 1rem;
+    min-height: auto;
+  }
+
+  .game-divider {
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(to right,
+        transparent 0%,
+        var(--secondary-color) 20%,
+        var(--secondary-color) 80%,
+        transparent 100%);
+    margin: 0.5rem 0;
+  }
+
+  .player-panel {
+    padding: 0.8rem;
+  }
+
+  .player-hangman {
+    max-width: 150px;
+  }
+
+  .player-word .word-display {
+    font-size: clamp(0.9rem, 4vw, 1.2rem);
+    gap: clamp(0.2rem, 2vw, 0.5rem);
+  }
+
+  .shared-input-area {
+    padding: 1rem;
+  }
+
+  .turn-indicator {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .turn-divider {
+    display: none;
+  }
+
+  .score-display {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .score-divider {
+    display: none;
+  }
+}
+
+/* Game Mode Selector Styles */
+.game-mode-selector {
+  width: 100%;
+  max-width: 800px;
+  padding: var(--base-padding);
+  background: #f8f9fa;
+  border-radius: 1rem;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transition: transform var(--transition-speed) var(--transition-easing);
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  margin-top: -2rem;
+  backdrop-filter: blur(5px);
+}
+
+.mode-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.mode-header h2 {
+  margin: 0 0 0.5rem 0;
+  color: var(--primary-color);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+}
+
+.mode-header p {
+  margin: 0;
+  color: var(--text-color);
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+}
+
+.mode-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.mode-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 1rem;
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.mode-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: var(--secondary-color);
+}
+
+.mode-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.mode-card h3 {
+  margin: 0 0 1rem 0;
+  color: var(--primary-color);
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+}
+
+.mode-card p {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-color);
+  line-height: 1.6;
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
+}
+
+.mode-button {
+  background: var(--secondary-color);
+  color: white;
+  border: none;
+  border-radius: 2rem;
+  padding: 0.8rem 2rem;
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.mode-button:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.mode-button.single-player:hover {
+  background: var(--success-color);
+  box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+}
+
+.mode-button.two-player:hover {
+  background: #8e44ad;
+  box-shadow: 0 6px 20px rgba(142, 68, 173, 0.4);
+}
+
+.mode-footer {
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(52, 152, 219, 0.2);
+}
+
+.mode-footer p {
+  margin: 0;
+  color: var(--text-color);
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
+  font-style: italic;
+}
+
+/* Mobile responsiveness for mode selector */
+@media (max-width: 768px) {
+  .mode-options {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .mode-card {
+    padding: 1.5rem;
+  }
+
+  .mode-icon {
+    font-size: 2.5rem;
+  }
+}

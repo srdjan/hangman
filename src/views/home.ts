@@ -1,4 +1,4 @@
-import { GameState } from "../types.ts";
+import { GameState, TwoPlayerGameState, PlayerGameState, Player } from "../types.ts";
 import { match } from "../utils/pattern.ts";
 import { categories } from "../data/wordLists.ts";
 
@@ -14,8 +14,6 @@ export const homePage = (content: string): string => `
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/keyboard.js" defer></script>
 
-  <!-- Accessibility features -->
-  <div id="screen-reader-announcer" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
   <style>
     .sr-only {
       position: absolute;
@@ -52,6 +50,9 @@ export const homePage = (content: string): string => `
   </style>
 </head>
 <body>
+  <!-- Accessibility features -->
+  <div id="screen-reader-announcer" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
+
   <header></header>
 
   ${content}
@@ -375,3 +376,256 @@ export const hintButton = (state: GameState): string => {
   </div>
   `;
 };
+
+/**
+ * Two-player game component - main container
+ */
+export const twoPlayerGameComponent = (state: TwoPlayerGameState): string => `
+<div class="two-player-game-container" id="game-container">
+  <!-- Game header with scores and turn indicator -->
+  <div class="two-player-header">
+    <div class="game-title">
+      <h2>Hangman - Two Player</h2>
+    </div>
+    <div class="turn-indicator">
+      <span class="current-turn ${state.currentTurn === 'player1' ? 'active' : ''}">
+        ${state.player1.playerName}'s Turn
+      </span>
+      <span class="turn-divider">|</span>
+      <span class="current-turn ${state.currentTurn === 'player2' ? 'active' : ''}">
+        ${state.player2.playerName}'s Turn
+      </span>
+    </div>
+    <div class="score-display">
+      <span class="score">${state.player1.playerName}: ${state.scores.player1}</span>
+      <span class="score-divider">-</span>
+      <span class="score">${state.player2.playerName}: ${state.scores.player2}</span>
+    </div>
+  </div>
+
+  <!-- Split screen game area -->
+  <div class="two-player-main">
+    <div class="player-panel player1-panel">
+      ${playerGamePanel(state.player1, state.currentTurn === 'player1')}
+    </div>
+
+    <div class="game-divider"></div>
+
+    <div class="player-panel player2-panel">
+      ${playerGamePanel(state.player2, state.currentTurn === 'player2')}
+    </div>
+  </div>
+
+  <!-- Shared input area -->
+  ${sharedInputArea(state)}
+
+  <!-- Game over display -->
+  ${twoPlayerGameOverDisplay(state)}
+</div>
+`;
+
+/**
+ * Individual player game panel
+ */
+export const playerGamePanel = (playerState: PlayerGameState, isCurrentTurn: boolean): string => `
+<div class="player-game-area ${isCurrentTurn ? 'current-player' : ''}">
+  <div class="player-header">
+    <h3>${playerState.playerName}</h3>
+    <div class="player-status">
+      ${match(playerState.status)
+    .with("playing", () => isCurrentTurn ? "🎯 Your Turn" : "⏳ Waiting")
+    .with("won", () => "🎉 Won!")
+    .with("lost", () => "💀 Lost")
+    .exhaustive()}
+    </div>
+  </div>
+
+  <!-- Player's hangman display -->
+  <div class="player-hangman">
+    ${playerHangmanSvg(playerState)}
+  </div>
+
+  <!-- Player's word display -->
+  <div class="player-word">
+    ${playerWordDisplay(playerState)}
+  </div>
+
+  <!-- Player's wrong guesses -->
+  <div class="player-wrong-guesses">
+    <span class="wrong-label">Wrong: </span>
+    <span class="wrong-count">${playerState.wrongGuesses}/${playerState.maxWrong}</span>
+  </div>
+</div>
+`;
+
+/**
+ * Player-specific hangman SVG
+ */
+export const playerHangmanSvg = (playerState: PlayerGameState): string => {
+  const { status, wrongGuesses } = playerState;
+
+  return match(status)
+    .with("won", () => `
+      <div class="hangman-display">
+        <svg class="celebrate-figure" viewBox="0 0 200 200" aria-hidden="true" fill="none">
+          <text x="100" y="100" text-anchor="middle" font-size="60" fill="var(--success-color)">🎉</text>
+        </svg>
+      </div>
+    `)
+    .otherwise(() => `
+      <div class="hangman-display">
+        <svg class="hangman-figure" viewBox="0 0 200 200" aria-hidden="true" fill="none">
+          <!-- Base gallows structure -->
+          <path d="M20 180h160M60 180l-20-140h120l-20 140" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          <path d="M30 40h140" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" fill="none" />
+
+          <!-- Hangman parts based on wrong guesses -->
+          ${wrongGuesses >= 1 ? '<circle cx="100" cy="60" r="15" stroke="var(--primary-color)" stroke-width="3" fill="none" />' : ''}
+          ${wrongGuesses >= 2 ? '<path d="M100 75v50" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" />' : ''}
+          ${wrongGuesses >= 3 ? '<path d="M100 90l-20 20" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" />' : ''}
+          ${wrongGuesses >= 4 ? '<path d="M100 90l20 20" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" />' : ''}
+          ${wrongGuesses >= 5 ? '<path d="M100 125l-20 25" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" />' : ''}
+          ${wrongGuesses >= 6 ? '<path d="M100 125l20 25" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" />' : ''}
+          ${wrongGuesses >= 7 ? '<path d="M85 55l10 10M115 55l-10 10" stroke="var(--danger-color)" stroke-width="3" stroke-linecap="round" />' : ''}
+        </svg>
+      </div>
+    `);
+};
+
+/**
+ * Player-specific word display
+ */
+export const playerWordDisplay = (playerState: PlayerGameState): string => {
+  return `
+  <div class="word-display" aria-live="polite">
+    ${[...playerState.word].map(letter => `
+      <span class="letter">${playerState.guessedLetters.has(letter) ? letter : '<span style="visibility:hidden">X</span>'}</span>
+    `).join('')}
+  </div>
+  `;
+};
+
+/**
+ * Shared input area for two-player game
+ */
+export const sharedInputArea = (state: TwoPlayerGameState): string => {
+  const isGameOver = state.gameStatus !== "playing";
+  const currentPlayer = state.currentTurn === "player1" ? state.player1 : state.player2;
+
+  // Get all guessed letters from both players
+  const allGuessedLetters = new Set([
+    ...state.player1.guessedLetters,
+    ...state.player2.guessedLetters
+  ]);
+
+  return `
+  <div class="shared-input-area">
+    <div class="input-header">
+      <h4>${isGameOver ? "Game Over" : `${currentPlayer.playerName}'s Turn`}</h4>
+    </div>
+
+    <div class="keyboard ${isGameOver ? 'game-over' : ''}">
+      ${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('').map(letter => {
+    const isGuessed = allGuessedLetters.has(letter);
+    const isCorreectP1 = state.player1.word.includes(letter) && state.player1.guessedLetters.has(letter);
+    const isCorreectP2 = state.player2.word.includes(letter) && state.player2.guessedLetters.has(letter);
+    const isCorrect = isCorreectP1 || isCorreectP2;
+    const isIncorrect = isGuessed && !isCorrect;
+
+    return `
+          <button
+            data-letter="${letter}"
+            aria-label="Guess letter ${letter}"
+            aria-pressed="${isGuessed ? 'true' : 'false'}"
+            ${isGuessed ? 'disabled' : ''}
+            ${isGameOver ? 'disabled' : ''}
+            class="${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''}"
+            hx-post="/two-player/guess/${letter}?category=${encodeURIComponent(currentPlayer.category)}&difficulty=${currentPlayer.difficulty}"
+            hx-target="#game-container"
+            hx-swap="outerHTML"
+          >${letter}</button>
+        `;
+  }).join('')}
+
+      <button
+        class="restart"
+        aria-label="New Two-Player Game"
+        hx-post="/two-player/new-game?category=${encodeURIComponent(currentPlayer.category)}&difficulty=${currentPlayer.difficulty}"
+        hx-target="#game-container"
+        hx-swap="outerHTML"
+      >New Game</button>
+    </div>
+  </div>
+  `;
+};
+
+/**
+ * Two-player game over display
+ */
+export const twoPlayerGameOverDisplay = (state: TwoPlayerGameState): string => {
+  if (state.gameStatus === "playing") {
+    return "";
+  }
+
+  const [message, statusClass] = match(state.gameStatus)
+    .with("player1Won", () => [`🎉 ${state.player1.playerName} wins! Word: ${state.player1.word}`, "win"])
+    .with("player2Won", () => [`🎉 ${state.player2.playerName} wins! Word: ${state.player2.word}`, "win"])
+    .with("bothLost", () => [`💀 Both players lost! Words: ${state.player1.word}, ${state.player2.word}`, "lose"])
+    .with("gameOver", () => ["Game Over!", ""])
+    .exhaustive();
+
+  return `
+  <div class="two-player-game-over ${statusClass}" role="alert">
+    <div class="game-over-message">${message}</div>
+    <div class="final-scores">
+      Final Score: ${state.player1.playerName} ${state.scores.player1} - ${state.scores.player2} ${state.player2.playerName}
+    </div>
+  </div>
+  `;
+};
+
+/**
+ * Game mode selection component
+ */
+export const gameModeSelector = (): string => `
+<div class="game-mode-selector" id="game-container">
+  <div class="mode-header">
+    <h2>Choose Game Mode</h2>
+    <p>Select how you want to play Hangman</p>
+  </div>
+
+  <div class="mode-options">
+    <div class="mode-card">
+      <div class="mode-icon">🎯</div>
+      <h3>Single Player</h3>
+      <p>Play against the computer and try to guess the word before the hangman is complete.</p>
+      <button
+        class="mode-button single-player"
+        hx-get="/?mode=single"
+        hx-target="#game-container"
+        hx-swap="outerHTML"
+      >
+        Start Single Player
+      </button>
+    </div>
+
+    <div class="mode-card">
+      <div class="mode-icon">👥</div>
+      <h3>Two Player</h3>
+      <p>Compete against a friend! Take turns guessing letters and see who can complete their word first.</p>
+      <button
+        class="mode-button two-player"
+        hx-get="/two-player"
+        hx-target="#game-container"
+        hx-swap="outerHTML"
+      >
+        Start Two Player
+      </button>
+    </div>
+  </div>
+
+  <div class="mode-footer">
+    <p>Both modes support different difficulty levels and word categories!</p>
+  </div>
+</div>
+`;

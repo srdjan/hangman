@@ -1,5 +1,5 @@
 import { getCategoryByName } from "../data/wordLists.ts";
-import { WordDifficulty, GameState } from "../types.ts";
+import { WordDifficulty, GameState, TwoPlayerGameState, PlayerGameState, Player, TwoPlayerGameStatus } from "../types.ts";
 import { Result, ok, err } from "../utils/result.ts";
 
 /**
@@ -239,5 +239,200 @@ export const getHint = (state: GameState): Result<GameState, Error> => {
     status: newStatus,
     endTime,
     statistics
+  });
+};
+
+/**
+ * Create a player game state for two-player mode
+ */
+const createPlayerGameState = (
+  playerId: Player,
+  playerName: string,
+  difficulty: WordDifficulty = "medium",
+  category: string = "General",
+  hintsAllowed: number = 1
+): Result<PlayerGameState, Error> => {
+  const wordResult = selectRandomWord(difficulty, category);
+
+  if (!wordResult.ok) {
+    return wordResult;
+  }
+
+  return ok({
+    playerId,
+    playerName,
+    word: wordResult.value,
+    guessedLetters: new Set<string>(),
+    wrongGuesses: 0,
+    maxWrong: 7,
+    status: "playing" as const,
+    difficulty,
+    category,
+    hintsUsed: 0,
+    hintsAllowed,
+    startTime: Date.now(),
+    endTime: null
+  });
+};
+
+/**
+ * Create initial two-player game state
+ */
+export const createTwoPlayerGame = (
+  player1Name: string = "Player 1",
+  player2Name: string = "Player 2",
+  difficulty: WordDifficulty = "medium",
+  category: string = "General",
+  hintsAllowed: number = 1
+): Result<TwoPlayerGameState, Error> => {
+  const player1Result = createPlayerGameState("player1", player1Name, difficulty, category, hintsAllowed);
+  if (!player1Result.ok) {
+    return player1Result;
+  }
+
+  const player2Result = createPlayerGameState("player2", player2Name, difficulty, category, hintsAllowed);
+  if (!player2Result.ok) {
+    return player2Result;
+  }
+
+  return ok({
+    id: crypto.randomUUID(),
+    player1: player1Result.value,
+    player2: player2Result.value,
+    currentTurn: "player1",
+    gameStatus: "playing",
+    roundNumber: 1,
+    scores: {
+      player1: 0,
+      player2: 0
+    },
+    startTime: Date.now(),
+    endTime: null
+  });
+};
+
+/**
+ * Process a player's guess in a two-player game
+ */
+const processPlayerGuess = (playerState: PlayerGameState, letter: string): Result<PlayerGameState, Error> => {
+  // If player's game is not playing, return state unchanged
+  if (playerState.status !== "playing") {
+    return ok(playerState);
+  }
+
+  // Validate the letter
+  const validatedLetter = validateGuess(letter);
+  if (!validatedLetter.ok) {
+    return validatedLetter;
+  }
+
+  // Already guessed this letter
+  if (playerState.guessedLetters.has(validatedLetter.value)) {
+    return ok(playerState);
+  }
+
+  // Create new set with the guessed letter added
+  const newGuessedLetters = new Set(playerState.guessedLetters);
+  newGuessedLetters.add(validatedLetter.value);
+
+  // Calculate new wrong guesses
+  const newWrongGuesses =
+    playerState.word.includes(validatedLetter.value)
+      ? playerState.wrongGuesses
+      : playerState.wrongGuesses + 1;
+
+  // Determine if the word is complete
+  const isWordGuessed = [...playerState.word].every(l => newGuessedLetters.has(l));
+
+  // Determine new game status
+  const newStatus =
+    isWordGuessed
+      ? "won" as const
+      : newWrongGuesses >= playerState.maxWrong
+        ? "lost" as const
+        : "playing" as const;
+
+  const endTime = newStatus !== "playing" ? Date.now() : null;
+
+  // Return new immutable state
+  return ok({
+    ...playerState,
+    guessedLetters: newGuessedLetters,
+    wrongGuesses: newWrongGuesses,
+    status: newStatus,
+    endTime
+  });
+};
+
+/**
+ * Determine the overall game status based on both players' states
+ */
+const determineTwoPlayerGameStatus = (player1: PlayerGameState, player2: PlayerGameState): TwoPlayerGameStatus => {
+  if (player1.status === "won" && player2.status === "won") {
+    // Both won - this shouldn't happen in normal gameplay, but handle it
+    return "gameOver";
+  } else if (player1.status === "won") {
+    return "player1Won";
+  } else if (player2.status === "won") {
+    return "player2Won";
+  } else if (player1.status === "lost" && player2.status === "lost") {
+    return "bothLost";
+  } else if (player1.status === "lost" || player2.status === "lost") {
+    // One player lost but the other is still playing - game continues
+    return "playing";
+  } else {
+    return "playing";
+  }
+};
+
+/**
+ * Process a guess in a two-player game with turn management
+ */
+export const processTwoPlayerGuess = (state: TwoPlayerGameState, letter: string): Result<TwoPlayerGameState, Error> => {
+  // If game is over, return state unchanged
+  if (state.gameStatus !== "playing") {
+    return ok(state);
+  }
+
+  // Get the current player's state
+  const currentPlayer = state.currentTurn === "player1" ? state.player1 : state.player2;
+
+  // Process the guess for the current player
+  const updatedPlayerResult = processPlayerGuess(currentPlayer, letter);
+  if (!updatedPlayerResult.ok) {
+    return updatedPlayerResult;
+  }
+
+  const updatedPlayer = updatedPlayerResult.value;
+
+  // Update the game state with the new player state
+  const updatedState = state.currentTurn === "player1"
+    ? { ...state, player1: updatedPlayer }
+    : { ...state, player2: updatedPlayer };
+
+  // Determine the new overall game status
+  const newGameStatus = determineTwoPlayerGameStatus(updatedState.player1, updatedState.player2);
+
+  // Switch turns if the game is still playing and the guess was processed
+  const nextTurn = newGameStatus === "playing" && updatedPlayer.guessedLetters.size > currentPlayer.guessedLetters.size
+    ? (state.currentTurn === "player1" ? "player2" : "player1")
+    : state.currentTurn;
+
+  // Calculate scores and end time
+  const endTime = newGameStatus !== "playing" ? Date.now() : null;
+  const scores = { ...state.scores };
+
+  if (newGameStatus === "player1Won") {
+    scores.player1 += 1;
+  } else if (newGameStatus === "player2Won") {
+    scores.player2 += 1;
+  }
+
+  return ok({
+    ...updatedState,
+    currentTurn: nextTurn,
+    gameStatus: newGameStatus,
+    scores,
+    endTime
   });
 };

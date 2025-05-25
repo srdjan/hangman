@@ -3,7 +3,7 @@
 // Import dependencies using direct URLs for Deno Deploy
 import * as effection from "jsr:@effection/effection";
 import { createRouter } from "./src/routes/router.ts";
-import { gameHandler, newGameHandler, guessHandler, hintHandler, staticFileHandler } from "./src/routes/handlers.ts";
+import { gameHandler, newGameHandler, guessHandler, hintHandler, staticFileHandler, twoPlayerGameHandler, newTwoPlayerGameHandler, twoPlayerGuessHandler } from "./src/routes/handlers.ts";
 
 // Setup SIGINT (CTRL+C) handling for clean shutdown
 function setupSignalHandlers(cb: () => void) {
@@ -24,6 +24,9 @@ const runServer = function* () {
     { path: "/new-game", handler: newGameHandler },
     { path: "/guess/:letter", handler: guessHandler },
     { path: "/hint", handler: hintHandler },
+    { path: "/two-player", handler: twoPlayerGameHandler },
+    { path: "/two-player/new-game", handler: newTwoPlayerGameHandler },
+    { path: "/two-player/guess/:letter", handler: twoPlayerGuessHandler },
     { path: "/static/*", handler: staticFileHandler },
   ]);
 
