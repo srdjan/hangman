@@ -279,6 +279,7 @@ const createPlayerGameState = (
  * Create initial two-player game state
  */
 export const createTwoPlayerGame = (
+  roomId: string,
   player1Name: string = "Player 1",
   player2Name: string = "Player 2",
   difficulty: WordDifficulty = "medium",
@@ -297,6 +298,7 @@ export const createTwoPlayerGame = (
 
   return ok({
     id: crypto.randomUUID(),
+    roomId,
     player1: player1Result.value,
     player2: player2Result.value,
     currentTurn: "player1",

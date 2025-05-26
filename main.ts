@@ -3,7 +3,7 @@
 // Import dependencies using direct URLs for Deno Deploy
 import * as effection from "jsr:@effection/effection";
 import { createRouter } from "./src/routes/router.ts";
-import { gameHandler, newGameHandler, guessHandler, hintHandler, staticFileHandler, twoPlayerGameHandler, newTwoPlayerGameHandler, twoPlayerGuessHandler } from "./src/routes/handlers.ts";
+import { gameHandler, newGameHandler, guessHandler, hintHandler, staticFileHandler, twoPlayerSetupHandler, createRoomHandler, joinRoomHandler, roomEventsHandler, roomInvitationHandler, roomGameHandler, roomGuessHandler } from "./src/routes/handlers.ts";
 
 // Setup SIGINT (CTRL+C) handling for clean shutdown
 function setupSignalHandlers(cb: () => void) {
@@ -24,9 +24,13 @@ const runServer = function* () {
     { path: "/new-game", handler: newGameHandler },
     { path: "/guess/:letter", handler: guessHandler },
     { path: "/hint", handler: hintHandler },
-    { path: "/two-player", handler: twoPlayerGameHandler },
-    { path: "/two-player/new-game", handler: newTwoPlayerGameHandler },
-    { path: "/two-player/guess/:letter", handler: twoPlayerGuessHandler },
+    { path: "/two-player/setup", handler: twoPlayerSetupHandler },
+    { path: "/room/create", handler: createRoomHandler },
+    { path: "/room/join", handler: joinRoomHandler },
+    { path: "/room/:roomId", handler: roomInvitationHandler },
+    { path: "/room/:roomId/game", handler: roomGameHandler },
+    { path: "/room/:roomId/guess/:letter", handler: roomGuessHandler },
+    { path: "/room/:roomId/events", handler: roomEventsHandler },
     { path: "/static/*", handler: staticFileHandler },
   ]);
 
@@ -46,6 +50,8 @@ const runServer = function* () {
     const server = Deno.serve({ port, signal }, async (req: Request) => {
       const url = new URL(req.url);
       const path = url.pathname;
+
+      console.log(`${req.method} ${path}`);
 
       try {
         return await router(req, path);

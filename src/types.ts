@@ -97,10 +97,32 @@ export interface PlayerGameState {
 }
 
 /**
+ * Define game room state for invitation-based multiplayer
+ */
+export interface GameRoom {
+  readonly id: string;
+  readonly createdAt: number;
+  readonly createdBy: string; // Player 1 ID
+  readonly player1: {
+    readonly id: string;
+    readonly name: string;
+    readonly connected: boolean;
+  } | null;
+  readonly player2: {
+    readonly id: string;
+    readonly name: string;
+    readonly connected: boolean;
+  } | null;
+  readonly gameState: TwoPlayerGameState | null;
+  readonly status: "waiting" | "playing" | "finished";
+}
+
+/**
  * Define two-player game state
  */
 export interface TwoPlayerGameState {
   readonly id: string;
+  readonly roomId: string;
   readonly player1: PlayerGameState;
   readonly player2: PlayerGameState;
   readonly currentTurn: Player;
@@ -113,6 +135,17 @@ export interface TwoPlayerGameState {
   readonly startTime: number;
   readonly endTime: number | null;
 }
+
+/**
+ * Define SSE message types
+ */
+export type SSEMessage =
+  | { readonly type: "gameUpdate"; readonly gameState: TwoPlayerGameState }
+  | { readonly type: "playerJoined"; readonly playerName: string }
+  | { readonly type: "playerLeft"; readonly playerName: string }
+  | { readonly type: "turnChanged"; readonly currentTurn: Player }
+  | { readonly type: "gameOver"; readonly result: TwoPlayerGameStatus }
+  | { readonly type: "error"; readonly message: string };
 
 /**
  * Define two-player guess result type

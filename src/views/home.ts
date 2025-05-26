@@ -1,4 +1,4 @@
-import { GameState, TwoPlayerGameState, PlayerGameState, Player } from "../types.ts";
+import { GameState, TwoPlayerGameState, PlayerGameState, Player, GameRoom } from "../types.ts";
 import { match } from "../utils/pattern.ts";
 import { categories } from "../data/wordLists.ts";
 
@@ -378,9 +378,152 @@ export const hintButton = (state: GameState): string => {
 };
 
 /**
- * Two-player game component - main container
+ * Two-player game component with integrated invitation system for waiting state
  */
-export const twoPlayerGameComponent = (state: TwoPlayerGameState): string => `
+export const twoPlayerGameComponentWithInvitation = (state: TwoPlayerGameState, playerId: string, room: GameRoom): string => `
+<div class="two-player-game-container waiting-for-player" id="game-container">
+  <!-- Waiting state header with invitation tools -->
+  <div class="waiting-game-header">
+    <div class="game-title">
+      <h2>Hangman - Waiting for Player 2</h2>
+      <p>Share this invitation to start playing!</p>
+    </div>
+
+    <!-- Integrated invitation sharing -->
+    <div class="in-game-invitation">
+      <div class="invitation-section">
+        <div class="room-code-share">
+          <label>Room Code:</label>
+          <div class="code-display">
+            <span class="room-code-text">${room.id}</span>
+            <button class="copy-btn" onclick="copyRoomCode('${room.id}')">📋</button>
+          </div>
+        </div>
+
+        <div class="invitation-link-share">
+          <label>Invitation Link:</label>
+          <div class="link-display">
+            <input type="text" readonly value="[ORIGIN]/room/${room.id}" class="invitation-input" id="invitation-link">
+            <button class="copy-btn" onclick="copyInvitationLink()">📋</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game area in waiting state -->
+  <div class="two-player-main waiting-state">
+    <div class="player-panel player1-panel waiting-for-opponent">
+      ${playerGamePanel(state.player1, false, playerId === 'player1')}
+    </div>
+
+    <div class="game-divider"></div>
+
+    <div class="player-panel player2-panel waiting-for-player">
+      <div class="player-game-area">
+        <div class="player-header">
+          <h3>Waiting for Player 2...</h3>
+          <div class="player-status">
+            <div class="waiting-indicator">
+              <div class="spinner-small"></div>
+              <span>Waiting for opponent to join</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="player-hangman">
+          <div class="hangman-display">
+            <svg class="hangman-figure waiting" viewBox="0 0 200 200" aria-hidden="true" fill="none">
+              <text x="100" y="100" text-anchor="middle" font-size="40" fill="#bdc3c7">?</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="player-word">
+          <div class="word-display">
+            <span class="letter waiting">?</span>
+            <span class="letter waiting">?</span>
+            <span class="letter waiting">?</span>
+            <span class="letter waiting">?</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Disabled input area with waiting message -->
+  <div class="shared-input-area waiting-state">
+    <div class="input-header">
+      <h4>Waiting for Player 2 to Join</h4>
+      <p>The game will start automatically when your opponent joins!</p>
+    </div>
+
+    <div class="keyboard disabled">
+      ${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('').map(letter => `
+        <button data-letter="${letter}" disabled class="waiting">${letter}</button>
+      `).join('')}
+    </div>
+  </div>
+</div>
+
+<script>
+function copyRoomCode(code) {
+  navigator.clipboard.writeText(code).then(() => {
+    showNotification('Room code copied to clipboard!');
+  });
+}
+
+function copyInvitationLink() {
+  const urlInput = document.getElementById('invitation-link');
+  const link = urlInput.value.replace('[ORIGIN]', window.location.origin);
+  navigator.clipboard.writeText(link).then(() => {
+    showNotification('Invitation link copied to clipboard!');
+  });
+}
+
+function showNotification(message) {
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+// Connect to SSE for real-time updates
+const eventSource = new EventSource('/room/${state.roomId}/events');
+eventSource.onmessage = function(event) {
+  const data = JSON.parse(event.data);
+
+  if (data.type === 'playerJoined') {
+    showNotification(data.playerName + ' has joined the game!');
+    // Use HTMX to update the game container instead of full page reload
+    setTimeout(() => {
+      htmx.ajax('GET', '/room/${state.roomId}/game', {
+        target: '#game-container',
+        swap: 'outerHTML'
+      });
+    }, 1000);
+  }
+};
+
+eventSource.onerror = function(event) {
+  console.error('SSE connection error:', event);
+};
+
+// Clean up SSE connection when page unloads
+window.addEventListener('beforeunload', function() {
+  eventSource.close();
+});
+</script>
+`;
+
+/**
+ * Two-player game component - main container with SSE support
+ */
+export const twoPlayerGameComponent = (state: TwoPlayerGameState, playerId: string): string => `
 <div class="two-player-game-container" id="game-container">
   <!-- Game header with scores and turn indicator -->
   <div class="two-player-header">
@@ -405,29 +548,72 @@ export const twoPlayerGameComponent = (state: TwoPlayerGameState): string => `
 
   <!-- Split screen game area -->
   <div class="two-player-main">
-    <div class="player-panel player1-panel">
-      ${playerGamePanel(state.player1, state.currentTurn === 'player1')}
+    <div class="player-panel player1-panel ${state.currentTurn === 'player1' ? 'active-player' : 'waiting-player'}">
+      ${playerGamePanel(state.player1, state.currentTurn === 'player1', playerId === 'player1')}
     </div>
 
     <div class="game-divider"></div>
 
-    <div class="player-panel player2-panel">
-      ${playerGamePanel(state.player2, state.currentTurn === 'player2')}
+    <div class="player-panel player2-panel ${state.currentTurn === 'player2' ? 'active-player' : 'waiting-player'}">
+      ${playerGamePanel(state.player2, state.currentTurn === 'player2', playerId === 'player2')}
     </div>
   </div>
 
   <!-- Shared input area -->
-  ${sharedInputArea(state)}
+  ${sharedInputArea(state, playerId)}
 
   <!-- Game over display -->
   ${twoPlayerGameOverDisplay(state)}
 </div>
+
+<script>
+// Connect to SSE for real-time updates
+const eventSource = new EventSource('/room/${state.roomId}/events');
+eventSource.onmessage = function(event) {
+  const data = JSON.parse(event.data);
+
+  if (data.type === 'gameUpdate') {
+    // Show notification about the move
+    if (data.lastMove) {
+      const playerName = data.lastMove.player === 'player1' ? '${state.player1.playerName}' : '${state.player2.playerName}';
+      showNotification(playerName + ' guessed "' + data.lastMove.letter + '"');
+    }
+
+    // Update the game state via HTMX after a short delay to show the notification
+    setTimeout(() => {
+      htmx.ajax('GET', '/room/${state.roomId}/game?player=${playerId}', {target: '#game-container', swap: 'outerHTML'});
+    }, 500);
+  } else if (data.type === 'playerLeft') {
+    showNotification(data.playerName + ' has left the game');
+  }
+};
+
+eventSource.onerror = function(event) {
+  console.error('SSE connection error:', event);
+};
+
+// Clean up SSE connection when page unloads
+window.addEventListener('beforeunload', function() {
+  eventSource.close();
+});
+
+function showNotification(message) {
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+</script>
 `;
 
 /**
  * Individual player game panel
  */
-export const playerGamePanel = (playerState: PlayerGameState, isCurrentTurn: boolean): string => `
+export const playerGamePanel = (playerState: PlayerGameState, isCurrentTurn: boolean, isCurrentPlayer: boolean = false): string => `
 <div class="player-game-area ${isCurrentTurn ? 'current-player' : ''}">
   <div class="player-header">
     <h3>${playerState.playerName}</h3>
@@ -508,9 +694,12 @@ export const playerWordDisplay = (playerState: PlayerGameState): string => {
 /**
  * Shared input area for two-player game
  */
-export const sharedInputArea = (state: TwoPlayerGameState): string => {
+export const sharedInputArea = (state: TwoPlayerGameState, playerId: string = ""): string => {
   const isGameOver = state.gameStatus !== "playing";
   const currentPlayer = state.currentTurn === "player1" ? state.player1 : state.player2;
+
+  // Determine if it's this player's turn
+  const isMyTurn = state.currentTurn === playerId;
 
   // Get all guessed letters from both players
   const allGuessedLetters = new Set([
@@ -522,9 +711,11 @@ export const sharedInputArea = (state: TwoPlayerGameState): string => {
   <div class="shared-input-area">
     <div class="input-header">
       <h4>${isGameOver ? "Game Over" : `${currentPlayer.playerName}'s Turn`}</h4>
+      ${!isGameOver && !isMyTurn ? `<p class="turn-waiting">Waiting for ${currentPlayer.playerName} to make a move...</p>` : ''}
+
     </div>
 
-    <div class="keyboard ${isGameOver ? 'game-over' : ''}">
+    <div class="keyboard ${isGameOver ? 'game-over' : ''} ${!isMyTurn ? 'not-my-turn' : ''}">
       ${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('').map(letter => {
     const isGuessed = allGuessedLetters.has(letter);
     const isCorreectP1 = state.player1.word.includes(letter) && state.player1.guessedLetters.has(letter);
@@ -539,8 +730,9 @@ export const sharedInputArea = (state: TwoPlayerGameState): string => {
             aria-pressed="${isGuessed ? 'true' : 'false'}"
             ${isGuessed ? 'disabled' : ''}
             ${isGameOver ? 'disabled' : ''}
-            class="${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''}"
-            hx-post="/two-player/guess/${letter}?category=${encodeURIComponent(currentPlayer.category)}&difficulty=${currentPlayer.difficulty}"
+            ${!isMyTurn ? 'disabled' : ''}
+            class="${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''} ${!isMyTurn ? 'not-my-turn' : ''}"
+            hx-post="/room/${state.roomId}/guess/${letter}"
             hx-target="#game-container"
             hx-swap="outerHTML"
           >${letter}</button>
@@ -550,7 +742,7 @@ export const sharedInputArea = (state: TwoPlayerGameState): string => {
       <button
         class="restart"
         aria-label="New Two-Player Game"
-        hx-post="/two-player/new-game?category=${encodeURIComponent(currentPlayer.category)}&difficulty=${currentPlayer.difficulty}"
+        hx-get="/two-player/setup"
         hx-target="#game-container"
         hx-swap="outerHTML"
       >New Game</button>
@@ -615,7 +807,7 @@ export const gameModeSelector = (): string => `
       <p>Compete against a friend! Take turns guessing letters and see who can complete their word first.</p>
       <button
         class="mode-button two-player"
-        hx-get="/two-player"
+        hx-get="/two-player/setup"
         hx-target="#game-container"
         hx-swap="outerHTML"
       >
@@ -628,4 +820,157 @@ export const gameModeSelector = (): string => `
     <p>Both modes support different difficulty levels and word categories!</p>
   </div>
 </div>
+`;
+
+/**
+ * Two-player setup component for creating or joining games
+ */
+export const twoPlayerSetupComponent = (): string => `
+<div class="two-player-setup" id="game-container">
+  <div class="setup-header">
+    <h2>Two Player Setup</h2>
+    <p>Create a game room or join an existing one</p>
+  </div>
+
+  <div class="setup-options">
+    <div class="setup-card">
+      <div class="setup-icon">🎯</div>
+      <h3>Create Game Room</h3>
+      <p>Start a new game and invite a friend to join</p>
+
+      <form class="create-room-form" hx-post="/room/create" hx-target="#game-container" hx-swap="outerHTML">
+        <div class="form-group">
+          <label for="player-name">Your Name:</label>
+          <input type="text" id="player-name" name="playerName" required maxlength="20" placeholder="Enter your name">
+        </div>
+
+        <div class="form-group">
+          <label for="difficulty">Difficulty:</label>
+          <select id="difficulty" name="difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="category">Category:</label>
+          <select id="category" name="category">
+            ${categories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('')}
+          </select>
+        </div>
+
+        <button type="submit" class="setup-button create-button">Create Room</button>
+      </form>
+    </div>
+
+    <div class="setup-card">
+      <div class="setup-icon">🔗</div>
+      <h3>Join Game Room</h3>
+      <p>Enter a room code to join an existing game</p>
+
+      <form class="join-room-form" hx-post="/room/join" hx-target="#game-container" hx-swap="outerHTML">
+        <div class="form-group">
+          <label for="join-player-name">Your Name:</label>
+          <input type="text" id="join-player-name" name="playerName" required maxlength="20" placeholder="Enter your name">
+        </div>
+
+        <div class="form-group">
+          <label for="room-code">Room Code:</label>
+          <input type="text" id="room-code" name="roomId" required placeholder="Enter room code" pattern="[a-zA-Z0-9-]{36}">
+        </div>
+
+        <button type="submit" class="setup-button join-button">Join Room</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="setup-footer">
+    <button class="back-button" hx-get="/" hx-target="#game-container" hx-swap="outerHTML">
+      ← Back to Game Modes
+    </button>
+  </div>
+</div>
+`;
+
+/**
+ * Room waiting component - shown to player 1 while waiting for player 2
+ */
+export const roomWaitingComponent = (room: GameRoom): string => `
+<div class="room-waiting" id="game-container">
+  <div class="waiting-header">
+    <h2>Waiting for Player 2</h2>
+    <p>Share this room code with your friend</p>
+  </div>
+
+  <div class="room-info">
+    <div class="room-code-display">
+      <label>Room Code:</label>
+      <div class="room-code">
+        <span class="code-text">${room.id}</span>
+        <button class="copy-button" onclick="copyRoomCode('${room.id}')">📋 Copy</button>
+      </div>
+    </div>
+
+    <div class="invitation-link">
+      <label>Invitation Link:</label>
+      <div class="link-container">
+        <input type="text" readonly value="[ORIGIN]/room/${room.id}" class="invitation-url" id="invitation-url">
+        <button class="copy-button" onclick="copyInvitationLink()">📋 Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="waiting-status">
+    <div class="spinner"></div>
+    <p>Waiting for ${room.player1?.name || 'Player 1'} to invite someone...</p>
+  </div>
+
+  <div class="waiting-actions">
+    <button class="cancel-button" hx-post="/room/cancel" hx-target="#game-container" hx-swap="outerHTML">
+      Cancel Game
+    </button>
+  </div>
+</div>
+
+<script>
+function copyRoomCode(code) {
+  navigator.clipboard.writeText(code).then(() => {
+    showNotification('Room code copied to clipboard!');
+  });
+}
+
+function copyInvitationLink() {
+  const urlInput = document.getElementById('invitation-url');
+  const link = urlInput.value.replace('[ORIGIN]', window.location.origin);
+  navigator.clipboard.writeText(link).then(() => {
+    showNotification('Invitation link copied to clipboard!');
+  });
+}
+
+function showNotification(message) {
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+// Connect to SSE for real-time updates
+const eventSource = new EventSource('/room/${room.id}/events');
+eventSource.onmessage = function(event) {
+  const data = JSON.parse(event.data);
+  if (data.type === 'playerJoined') {
+    // Refresh the page to start the game
+    window.location.reload();
+  }
+};
+
+eventSource.onerror = function(event) {
+  console.error('SSE connection error:', event);
+};
+</script>
 `;
