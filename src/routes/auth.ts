@@ -32,11 +32,18 @@ export const authHandler = async (req: Request): Promise<Response> => {
     const url = new URL(req.url);
     const username = url.searchParams.get("username") || "";
     
-    console.log("Username from query:", username);
+    console.log("Email from query:", username);
     
     if (!username) {
-      console.log("No username provided");
-      return new Response("username required", { status: 400 });
+      console.log("No email provided");
+      return new Response("Email address required", { status: 400 });
+    }
+    
+    // Validate email domain
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@fadv\.com$/;
+    if (!emailRegex.test(username)) {
+      console.log("Invalid email domain:", username);
+      return new Response("Email must be from @fadv.com domain", { status: 400 });
     }
 
     // Use fixed origin values
@@ -46,10 +53,10 @@ export const authHandler = async (req: Request): Promise<Response> => {
     // Load or create user
     let user = await getUser(username);
     if (!user) {
-      console.log("Creating new user:", username);
+      console.log("Creating new user with email:", username);
       user = await createUser(username, username, generateUserId());
     } else {
-      console.log("Found existing user:", username);
+      console.log("Found existing user with email:", username);
     }
 
     const { pathname, method } = { pathname: url.pathname, method: req.method };
@@ -60,7 +67,7 @@ export const authHandler = async (req: Request): Promise<Response> => {
       console.log("=== Credential Creation ===");
       console.log("Using RP ID:", AUTH_CONFIG.RP_ID);
       console.log("Using RP Name:", AUTH_CONFIG.RP_NAME);
-      console.log("Username:", user.username);
+      console.log("Email:", user.username);
       
       // Create registration options using SimpleWebAuthn
       const opts = await generateRegistrationOptions({
@@ -295,23 +302,32 @@ export const authHandler = async (req: Request): Promise<Response> => {
         });
 
         if (!verification.verified) {
+          console.log("SimpleWebAuthn verification failed");
           return Response.json({ success: false });
         }
+
+        console.log("SimpleWebAuthn verification successful!");
 
         // Create session
         const sessionId = generateSessionId();
         await createSession(sessionId, username);
         await deleteChallenge(username);
 
+        console.log("Session created:", sessionId);
+
+        // For localhost development, don't use Secure flag
         const cookie = [
           `session=${sessionId}`,
           `Path=/`,
           `HttpOnly`,
-          `Secure`,
           `SameSite=Strict`,
+          `Max-Age=86400`, // 24 hours
         ].join("; ");
 
-        return new Response(JSON.stringify({ success: true }), {
+        console.log("Setting cookie:", cookie);
+        console.log("Sending successful login response with session cookie");
+
+        return new Response(JSON.stringify({ success: true, redirect: "/" }), {
           status: 200,
           headers: {
             "Set-Cookie": cookie,
@@ -325,7 +341,7 @@ export const authHandler = async (req: Request): Promise<Response> => {
     })
     
     .with({ pathname: "/auth/logout", method: "POST" }, async () => {
-      const match = /session=([^;]+)/.exec(req.headers.get("cookie") || "");
+      const match = /(?:^|; )session=([^;]+)/.exec(req.headers.get("cookie") || "");
       const sessionId = match?.[1];
       
       if (sessionId) {

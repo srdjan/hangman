@@ -69,7 +69,7 @@ export const gameComponent = (state: GameState): string => `
   <div class="game-header">
     <div class="game-title">
       <h2>Hangman</h2>
-      ${state.username ? `<div class="user-info">Welcome, ${state.username}!</div>` : ''}
+      ${state.username ? `<div class="user-info">Welcome, ${state.username.split('@')[0]}!</div>` : ''}
     </div>
 
     <div class="game-nav">

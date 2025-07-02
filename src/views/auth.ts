@@ -115,16 +115,18 @@ export const loginPage = (error?: string): string => `
     <div class="auth-card">
       <h1 class="auth-title">🎮 Hangman Game</h1>
       <p class="auth-subtitle">
-        Welcome! Enter your username and use your biometric device (fingerprint, face ID, or security key) to securely login.
+        Welcome! Enter your @fadv.com email address and use your biometric device (fingerprint, face ID, or security key) to securely login.
       </p>
       
       <div class="username-form">
         <input 
-          type="text" 
+          type="email" 
           id="username" 
           class="username-input" 
-          placeholder="Enter your username"
-          autocomplete="username webauthn"
+          placeholder="Enter your @fadv.com email"
+          autocomplete="email webauthn"
+          pattern="[a-zA-Z0-9._%+-]+@fadv\\.com$"
+          title="Please enter a valid @fadv.com email address"
           required
         />
         <button id="loginBtn" class="auth-button">
@@ -190,11 +192,22 @@ export const loginPage = (error?: string): string => `
       return Uint8Array.from(atob(standardBase64), c => c.charCodeAt(0));
     }
 
+    // Email validation function
+    function validateEmail(email) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@fadv\.com$/;
+      return emailRegex.test(email);
+    }
+
     // Registration flow
     registerBtn.addEventListener('click', async () => {
       const username = usernameInput.value.trim();
       if (!username) {
-        showError('Please enter a username');
+        showError('Please enter an email address');
+        return;
+      }
+      
+      if (!validateEmail(username)) {
+        showError('Please enter a valid @fadv.com email address');
         return;
       }
 
@@ -243,18 +256,33 @@ export const loginPage = (error?: string): string => `
 
     // Login flow
     loginBtn.addEventListener('click', async () => {
+      console.log('=== LOGIN BUTTON CLICKED ===');
       const username = usernameInput.value.trim();
+      console.log('Username value:', username);
+      
       if (!username) {
-        showError('Please enter a username');
+        console.log('No username provided');
+        showError('Please enter an email address');
+        return;
+      }
+      
+      if (!validateEmail(username)) {
+        console.log('Email validation failed for:', username);
+        showError('Please enter a valid @fadv.com email address');
         return;
       }
 
+      console.log('Starting login process for:', username);
       showLoading(loginBtn);
 
       try {
         // Get authentication options
+        console.log('Fetching login options...');
         const optionsResponse = await fetch(\`/auth/login/options?username=\${encodeURIComponent(username)}\`);
+        console.log('Options response status:', optionsResponse.status);
+        
         if (!optionsResponse.ok) {
+          console.log('Failed to get login options, status:', optionsResponse.status);
           throw new Error('Failed to get login options');
         }
         
@@ -292,12 +320,37 @@ export const loginPage = (error?: string): string => `
           }),
         });
 
-        const result = await verifyResponse.json();
-        if (result.success) {
-          window.location.href = '/';
-        } else {
-          throw new Error('Authentication failed');
+        console.log('Verify response status:', verifyResponse.status);
+        console.log('Verify response ok:', verifyResponse.ok);
+        
+        if (!verifyResponse.ok) {
+          const statusText = 'Server responded with status ' + verifyResponse.status;
+          throw new Error(statusText);
         }
+        
+        const result = await verifyResponse.json();
+        console.log('Login result:', result);
+        console.log('Result success:', result.success);
+        console.log('Result redirect:', result.redirect);
+        
+        if (result.success && result.redirect) {
+          console.log('Login successful, redirecting to:', result.redirect);
+          console.log('About to set window.location.href to:', result.redirect);
+          window.location.href = result.redirect;
+          console.log('window.location.href has been set');
+          return;
+        }
+        
+        if (result.success) {
+          console.log('Login successful, redirecting to home page...');
+          console.log('About to set window.location.href to: /');
+          window.location.href = '/';
+          console.log('window.location.href has been set to /');
+          return;
+        }
+        
+        console.log('Login verification failed, result was:', result);
+        throw new Error('Login verification failed');
       } catch (error) {
         console.error('Login error:', error);
         showError(error.message || 'Login failed. Try registering first.');
