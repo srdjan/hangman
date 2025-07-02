@@ -73,3 +73,4 @@ Word data is in `src/data/wordLists.ts` with three categories (General, Animals,
 - **Type-driven development** - Extensive use of TypeScript's type system
 - **Result-based error handling** - Explicit error types instead of exceptions
 - **Session isolation** - Each user session maintains independent game state
+- No OOP!
