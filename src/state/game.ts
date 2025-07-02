@@ -27,7 +27,8 @@ export const selectRandomWord = (difficulty: WordDifficulty, category: string = 
 export const createGame = (
   difficulty: WordDifficulty = "hard",
   category: string = "Countries",
-  hintsAllowed: number = 1
+  hintsAllowed: number = 1,
+  username?: string
 ): Result<GameState, Error> => {
   const wordResult = selectRandomWord(difficulty, category);
 
@@ -55,7 +56,8 @@ export const createGame = (
       bestStreak: 0,
       totalGuesses: 0,
       averageGuessesPerWin: 0
-    }
+    },
+    username
   });
 };
 

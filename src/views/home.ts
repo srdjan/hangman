@@ -69,6 +69,7 @@ export const gameComponent = (state: GameState): string => `
   <div class="game-header">
     <div class="game-title">
       <h2>Hangman</h2>
+      ${state.username ? `<div class="user-info">Welcome, ${state.username}!</div>` : ''}
     </div>
 
     <div class="game-nav">
@@ -80,6 +81,17 @@ export const gameComponent = (state: GameState): string => `
       >
         <span class="dashboard-icon">📊</span>
       </button>
+      
+      ${state.username ? `
+        <!-- Logout button -->
+        <button
+          class="logout-button"
+          aria-label="Logout"
+          onclick="fetch('/auth/logout', {method: 'POST'}).then(() => window.location.href = '/login')"
+        >
+          <span class="logout-icon">🚪</span>
+        </button>
+      ` : ''}
     </div>
   </div>
 

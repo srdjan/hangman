@@ -40,6 +40,7 @@ export interface GameState {
   readonly startTime: number;
   readonly endTime: number | null;
   readonly statistics: GameStatistics;
+  readonly username?: string;
 }
 
 /**

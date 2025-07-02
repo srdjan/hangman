@@ -2,11 +2,12 @@ import { createGame, processGuess, getHint } from "../state/game.ts";
 import { getSession, setSession, createSession } from "../state/session.ts";
 import { homePage, gameComponent } from "../views/home.ts";
 import { GameState } from "../types.ts";
+import { AuthState } from "../auth/types.ts";
 import { Result, ok } from "../utils/result.ts";
 // Import categories if needed for validation
 // import { categories } from "../data/wordLists.ts";
 
-const getOrCreateGameSession = (request: Request): Result<[string, GameState]> => {
+const getOrCreateGameSession = (request: Request, authState?: AuthState): Result<[string, GameState]> => {
   const cookies = request.headers.get("cookie") || "";
   const sessionCookie = cookies
     .split(";")
@@ -21,7 +22,7 @@ const getOrCreateGameSession = (request: Request): Result<[string, GameState]> =
   }
 
   if (!sessionId || !gameState) {
-    const gameResult = createGame();
+    const gameResult = createGame("hard", "Countries", 1, authState?.username);
     if (!gameResult.ok) {
       return gameResult;
     }
@@ -33,8 +34,8 @@ const getOrCreateGameSession = (request: Request): Result<[string, GameState]> =
   return ok([sessionId, gameState]);
 };
 
-export const gameHandler = (request: Request, _params?: Record<string, string>): Promise<Response> => {
-  const sessionResult = getOrCreateGameSession(request);
+export const gameHandler = (request: Request, _params?: Record<string, string>, authState?: AuthState): Promise<Response> => {
+  const sessionResult = getOrCreateGameSession(request, authState);
 
   if (!sessionResult.ok) {
     return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
@@ -54,8 +55,8 @@ export const gameHandler = (request: Request, _params?: Record<string, string>):
 /**
  * Handle new game creation request
  */
-export const newGameHandler = async (request: Request): Promise<Response> => {
-  const sessionResult = getOrCreateGameSession(request);
+export const newGameHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
+  const sessionResult = getOrCreateGameSession(request, authState);
 
   if (!sessionResult.ok) {
     return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
@@ -69,7 +70,7 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
     const category = "Countries";
     const hintsAllowed = 1;
 
-    const gameResult = createGame(difficulty, category, hintsAllowed);
+    const gameResult = createGame(difficulty, category, hintsAllowed, authState?.username);
     if (!gameResult.ok) {
       return Promise.resolve(new Response(`Error: ${gameResult.error.message}`, { status: 500 }));
     }
@@ -91,13 +92,13 @@ export const newGameHandler = async (request: Request): Promise<Response> => {
 /**
  * Handle letter guess request
  */
-export const guessHandler = (request: Request, params: Record<string, string>): Promise<Response> => {
+export const guessHandler = (request: Request, params: Record<string, string>, authState?: AuthState): Promise<Response> => {
   const letter = params.letter?.toUpperCase() || "";
   if (!/^[A-Z]$/.test(letter)) {
     return Promise.resolve(new Response("Invalid letter", { status: 400 }));
   }
 
-  const sessionResult = getOrCreateGameSession(request);
+  const sessionResult = getOrCreateGameSession(request, authState);
   if (!sessionResult.ok) {
     return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
   }
@@ -124,8 +125,8 @@ export const guessHandler = (request: Request, params: Record<string, string>): 
 /**
  * Handle hint request
  */
-export const hintHandler = (request: Request): Promise<Response> => {
-  const sessionResult = getOrCreateGameSession(request);
+export const hintHandler = (request: Request, authState?: AuthState): Promise<Response> => {
+  const sessionResult = getOrCreateGameSession(request, authState);
   if (!sessionResult.ok) {
     return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
   }

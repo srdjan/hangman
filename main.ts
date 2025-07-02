@@ -4,6 +4,54 @@
 import * as effection from "jsr:@effection/effection";
 import { createRouter } from "./src/routes/router.ts";
 import { gameHandler, newGameHandler, guessHandler, hintHandler, staticFileHandler } from "./src/routes/handlers.ts";
+import { authHandler } from "./src/routes/auth.ts";
+import { requireAuth } from "./src/middleware/auth.ts";
+import { rateLimit, securityHeaders } from "./src/middleware/rateLimiting.ts";
+import { loginPage } from "./src/views/auth.ts";
+
+// Protected route handlers
+const protectedGameHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof Response) {
+    return authResult; // Redirect to login
+  }
+  return gameHandler(request, params, authResult);
+};
+
+const protectedNewGameHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof Response) {
+    return authResult; // Redirect to login
+  }
+  return newGameHandler(request, authResult);
+};
+
+const protectedGuessHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof Response) {
+    return authResult; // Redirect to login
+  }
+  return guessHandler(request, params, authResult);
+};
+
+const protectedHintHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof Response) {
+    return authResult; // Redirect to login
+  }
+  return hintHandler(request, authResult);
+};
+
+// Auth route handlers
+const loginHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
+  return new Response(loginPage(), {
+    headers: { "Content-Type": "text/html" },
+  });
+};
+
+const authRouteHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
+  return authHandler(request);
+};
 
 // Setup SIGINT (CTRL+C) handling for clean shutdown
 function setupSignalHandlers(cb: () => void) {
@@ -20,10 +68,16 @@ function setupSignalHandlers(cb: () => void) {
 // Define the main function
 const runServer = function* () {
   const router = createRouter([
-    { path: "/", handler: gameHandler },
-    { path: "/new-game", handler: newGameHandler },
-    { path: "/guess/:letter", handler: guessHandler },
-    { path: "/hint", handler: hintHandler },
+    { path: "/", handler: protectedGameHandler },
+    { path: "/new-game", handler: protectedNewGameHandler },
+    { path: "/guess/:letter", handler: protectedGuessHandler },
+    { path: "/hint", handler: protectedHintHandler },
+    { path: "/login", handler: loginHandler },
+    { path: "/auth/register/options", handler: authRouteHandler },
+    { path: "/auth/register/verify", handler: authRouteHandler },
+    { path: "/auth/login/options", handler: authRouteHandler },
+    { path: "/auth/login/verify", handler: authRouteHandler },
+    { path: "/auth/logout", handler: authRouteHandler },
     { path: "/static/*", handler: staticFileHandler },
   ]);
 
@@ -45,10 +99,23 @@ const runServer = function* () {
       const path = url.pathname;
 
       try {
-        return await router(req, path);
+        let rateLimitHeaders: Record<string, string> | undefined;
+        
+        // Apply rate limiting to auth routes
+        if (path.startsWith("/auth/")) {
+          const rateLimitResult = await rateLimit(req);
+          if (rateLimitResult.response) {
+            return await securityHeaders(rateLimitResult.response);
+          }
+          rateLimitHeaders = rateLimitResult.rateLimitHeaders;
+        }
+
+        const response = await router(req, path);
+        return await securityHeaders(response, rateLimitHeaders);
       } catch (error) {
         console.error("Server error:", error);
-        return new Response("Server error", { status: 500 });
+        const errorResponse = new Response("Server error", { status: 500 });
+        return await securityHeaders(errorResponse);
       }
     });
 
