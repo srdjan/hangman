@@ -72,48 +72,6 @@ export const gameComponent = (state: GameState): string => `
     </div>
 
     <div class="game-nav">
-      <!-- Difficulty selector -->
-      <div class="difficulty-control">
-        <div class="difficulty-pills">
-          <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-            <input type="hidden" name="difficulty" value="easy">
-            <input type="hidden" name="category" value="${state.category}">
-            <button type="submit" class="difficulty-pill easy ${state.difficulty === 'easy' ? 'active' : ''}">Easy</button>
-          </form>
-
-          <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-            <input type="hidden" name="difficulty" value="medium">
-            <input type="hidden" name="category" value="${state.category}">
-            <button type="submit" class="difficulty-pill medium ${state.difficulty === 'medium' ? 'active' : ''}">Medium</button>
-          </form>
-
-          <form hx-post="/new-game" hx-target="#game-container" hx-swap="outerHTML">
-            <input type="hidden" name="difficulty" value="hard">
-            <input type="hidden" name="category" value="${state.category}">
-            <button type="submit" class="difficulty-pill hard ${state.difficulty === 'hard' ? 'active' : ''}">Hard</button>
-          </form>
-        </div>
-      </div>
-
-      <!-- Category dropdown -->
-      <div class="category-dropdown">
-        <input type="hidden" name="difficulty" value="${state.difficulty}">
-        <select
-          id="category-select"
-          aria-label="Select word category"
-          hx-get="/new-game"
-          hx-target="#game-container"
-          hx-swap="outerHTML"
-          hx-trigger="change"
-          name="category"
-          hx-include="[name='category'],[name='difficulty']"
-        >
-          ${categories.map(category => `
-            <option value="${category.name}" ${state.category === category.name ? 'selected' : ''}>${category.name}</option>
-          `).join('')}
-        </select>
-      </div>
-
       <!-- Dashboard toggle button -->
       <button
         class="dashboard-toggle"
@@ -264,7 +222,7 @@ export const keyboard = (state: GameState): string => {
         ${isGuessed ? 'disabled' : ''}
         ${isGameOver ? 'disabled' : ''}
         class="${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''}"
-        hx-post="/guess/${letter}?category=${encodeURIComponent(state.category)}&difficulty=${state.difficulty}"
+        hx-post="/guess/${letter}"
         hx-target="#game-container"
         hx-swap="outerHTML"
       >${letter}</button>
@@ -272,7 +230,7 @@ export const keyboard = (state: GameState): string => {
     <button
       class="restart"
       aria-label="New Game"
-      hx-post="/new-game?category=${encodeURIComponent(state.category)}&difficulty=${state.difficulty}"
+      hx-post="/new-game"
       hx-target="#game-container"
       hx-swap="outerHTML"
     >New Game</button>
@@ -364,7 +322,7 @@ export const hintButton = (state: GameState): string => {
     <button
       class="hint-button ${isDisabled ? 'disabled' : ''}"
       ${isDisabled ? 'disabled' : ''}
-      hx-post="/hint?category=${encodeURIComponent(state.category)}&difficulty=${state.difficulty}"
+      hx-post="/hint"
       hx-target="#game-container"
       hx-swap="outerHTML"
       aria-label="Get a hint. ${hintsLeft} hint${hintsLeft !== 1 ? 's' : ''} remaining."
