@@ -27,6 +27,7 @@ This is a **Hangman game** built with **Deno** and **TypeScript** using:
 - **Effection** for structured concurrency and server management
 - **Server-side rendering** with HTML templates
 - **Session-based state management** using HTTP cookies
+- **Authentication system** with magic link-based login (demo mode)
 - **Functional programming patterns** with immutable data structures
 
 ### Key Architecture Components
@@ -34,7 +35,9 @@ This is a **Hangman game** built with **Deno** and **TypeScript** using:
 - **Entry point**: `main.ts` - Sets up HTTP server with routing and graceful shutdown
 - **Game Logic**: `src/state/game.ts` - Immutable game state with functional operations
 - **Session Management**: `src/state/session.ts` - In-memory session storage using Map
+- **Authentication**: `src/auth/` - Magic link authentication system (demo mode)
 - **Routing**: `src/routes/router.ts` + `src/routes/handlers.ts` - Custom URLPattern-based routing
+- **Auth Middleware**: `src/middleware/auth-guard.ts` - Request authentication protection
 - **Type Safety**: `src/types.ts` - Strong TypeScript typing with discriminated unions
 - **Error Handling**: `src/utils/result.ts` - Functional Result type (no exceptions)
 
@@ -45,7 +48,7 @@ Game states flow through these phases:
 - `"won"` → word completed successfully  
 - `"lost"` → 7 incorrect guesses reached
 
-Sessions are stored in-memory and persist game state across HTTP requests using secure cookies.
+Sessions are stored in-memory and persist game state across HTTP requests using secure cookies. Authentication adds user email to game state for personalized experiences.
 
 ### Word Lists and Categories
 

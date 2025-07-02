@@ -33,7 +33,7 @@ const getOrCreateGameSession = (request: Request): Result<[string, GameState]> =
   return ok([sessionId, gameState]);
 };
 
-export const gameHandler = (request: Request): Promise<Response> => {
+export const gameHandler = (request: Request, _params?: Record<string, string>): Promise<Response> => {
   const sessionResult = getOrCreateGameSession(request);
 
   if (!sessionResult.ok) {
