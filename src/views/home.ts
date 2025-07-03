@@ -378,11 +378,33 @@ export const homePage = (content: string): string => `
     // Load daily limit info on page load
     loadDailyLimitInfo();
 
+    // Load player standings asynchronously
+    function loadPlayerStandings() {
+      const standingsElement = document.getElementById('player-standings');
+      if (standingsElement) {
+        fetch('/api/standings')
+          .then(response => response.json())
+          .then(data => {
+            if (data.standings) {
+              standingsElement.innerHTML = data.content;
+            }
+          })
+          .catch(error => {
+            console.error('Error loading player standings:', error);
+            standingsElement.innerHTML = '<div class="standings-error">Failed to load standings</div>';
+          });
+      }
+    }
+
+    // Load standings on page load
+    loadPlayerStandings();
+
     // Listen for HTMX events to reinitialize timer after updates
     document.addEventListener('htmx:afterSettle', function(event) {
       if (event.detail.target && event.detail.target.id === 'game-container') {
         initializeOrUpdateTimer();
         loadDailyLimitInfo();
+        loadPlayerStandings();
       }
     });
   </script>
@@ -415,8 +437,8 @@ export const gameComponent = (state: GameState): string => `
       <!-- Standings button -->
       <button
         class="standings-button"
-        aria-label="View Player Standings"
-        onclick="window.location.href = '/standings'"
+        aria-label="Toggle player standings"
+        onclick="document.getElementById('player-standings').classList.toggle('visible');"
       >
         <span class="standings-icon">🏆</span>
       </button>
@@ -454,6 +476,11 @@ export const gameComponent = (state: GameState): string => `
     <!-- Game statistics (hidden by default) -->
     <div id="game-stats" class="game-stats">
       ${gameStatsContent(state)}
+    </div>
+
+    <!-- Player standings (hidden by default) -->
+    <div id="player-standings" class="player-standings-modal">
+      <div class="standings-loading">Loading standings...</div>
     </div>
 
     <!-- Hangman figure -->
@@ -748,7 +775,44 @@ export const countdownTimer = (state: GameState): string => {
 };
 
 /**
- * Player standings component
+ * Player standings modal content
+ */
+export const playerStandingsContent = (standings: any[], currentUser?: string): string => {
+  if (!standings || standings.length === 0) {
+    return `
+      <h3>🏆 Player Standings</h3>
+      <div class="standings-empty">
+        <p>No players have won games yet. Be the first!</p>
+      </div>
+    `;
+  }
+
+  return `
+    <h3>🏆 Player Standings</h3>
+    <div class="standings-header">
+      <span class="rank-header">Rank</span>
+      <span class="player-header">Player</span>
+      <span class="wins-header">Wins</span>
+      <span class="time-header">Avg Time</span>
+    </div>
+    <div class="standings-list">
+      ${standings.map((standing, index) => `
+        <div class="standing-row ${standing.username === currentUser ? 'current-user' : ''}">
+          <span class="rank">${index + 1}</span>
+          <span class="player-name">${standing.displayName}</span>
+          <span class="wins">${standing.totalWins}</span>
+          <span class="avg-time">${standing.averageTime}s</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="standings-note">
+      <small>Ranked by total wins, then by average completion time</small>
+    </div>
+  `;
+};
+
+/**
+ * Player standings component (legacy - for page-based standings)
  */
 export const playerStandings = (standings: any[], currentUser?: string): string => {
   if (!standings || standings.length === 0) {
@@ -894,8 +958,8 @@ export const welcomeScreen = (username?: string): string => {
         <!-- Standings button -->
         <button
           class="standings-button"
-          aria-label="View Player Standings"
-          onclick="window.location.href = '/standings'"
+          aria-label="Toggle player standings"
+          onclick="document.getElementById('player-standings').classList.toggle('visible');"
         >
           <span class="standings-icon">🏆</span>
         </button>
@@ -922,6 +986,11 @@ export const welcomeScreen = (username?: string): string => {
           </button>
         ` : ''}
       </div>
+    </div>
+
+    <!-- Player standings modal (hidden by default) -->
+    <div id="player-standings" class="player-standings-modal">
+      <div class="standings-loading">Loading standings...</div>
     </div>
 
     <!-- Welcome content -->

@@ -480,6 +480,34 @@ export const dailyLimitInfoHandler = async (request: Request, authState?: AuthSt
 };
 
 /**
+ * Handle standings API request
+ */
+export const standingsApiHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
+  try {
+    const { getPlayerStandings } = await import("../auth/kv.ts");
+    const { playerStandingsContent } = await import("../views/home.ts");
+    
+    const standings = await getPlayerStandings(20); // Top 20 players
+    const currentUser = authState?.username;
+    
+    const content = playerStandingsContent(standings, currentUser);
+    
+    return new Response(JSON.stringify({
+      standings: standings.length,
+      content: content
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error) {
+    console.error("Error in standingsApiHandler:", error);
+    return new Response(JSON.stringify({ error: "Failed to get standings" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+};
+
+/**
  * Handle static file requests
  */
 export const staticFileHandler = async (request: Request): Promise<Response> => {
