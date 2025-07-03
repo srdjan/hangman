@@ -16,160 +16,6 @@ export const homePage = (content: string): string => `
 
   <!-- Accessibility features -->
   <div id="screen-reader-announcer" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
-  <style>
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border-width: 0;
-    }
-
-    /* Animation classes */
-    .correct-guess {
-      animation: pulse-green 0.5s ease-in-out;
-    }
-
-    .incorrect-guess {
-      animation: shake 0.5s ease-in-out;
-    }
-
-    @keyframes pulse-green {
-      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
-      50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
-      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-    }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-      20%, 40%, 60%, 80% { transform: translateX(5px); }
-    }
-
-    /* Welcome notification styles */
-    .welcome-notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: linear-gradient(135deg, #4CAF50, #45a049);
-      color: white;
-      padding: 16px 24px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      z-index: 1000;
-      max-width: 300px;
-      animation: slideInRight 0.5s ease-out;
-      font-weight: 500;
-    }
-
-    .welcome-notification .close-btn {
-      background: none;
-      border: none;
-      color: white;
-      cursor: pointer;
-      float: right;
-      font-size: 18px;
-      line-height: 1;
-      margin-left: 12px;
-      opacity: 0.8;
-      padding: 0;
-    }
-
-    .welcome-notification .close-btn:hover {
-      opacity: 1;
-    }
-
-    @keyframes slideInRight {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes slideOutRight {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-    }
-
-    .welcome-notification.fade-out {
-      animation: slideOutRight 0.3s ease-in forwards;
-    }
-
-    /* Win sequence styling */
-    .win-sequence {
-      display: inline-block;
-      background: linear-gradient(135deg, #FFD700, #FFA500);
-      color: #333;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: 1.1em;
-      margin-top: 10px;
-      box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
-      animation: winSequencePulse 2s ease-in-out infinite;
-    }
-
-    @keyframes winSequencePulse {
-      0%, 100% { 
-        transform: scale(1);
-        box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
-      }
-      50% { 
-        transform: scale(1.05);
-        box-shadow: 0 4px 16px rgba(255, 215, 0, 0.5);
-      }
-    }
-
-    .status.win {
-      text-align: center;
-    }
-
-    /* Achievement section styling */
-    .recent-win-info {
-      margin-top: 20px;
-      padding: 15px;
-      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-      border-radius: 10px;
-      border-left: 4px solid #FFD700;
-    }
-
-    .recent-win-info h4 {
-      margin: 0 0 10px 0;
-      color: #495057;
-      font-size: 1.1em;
-    }
-
-    .achievement-badge {
-      background: linear-gradient(135deg, #FFD700, #FFA500);
-      color: #333;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-weight: 600;
-      text-align: center;
-      box-shadow: 0 2px 8px rgba(255, 215, 0, 0.2);
-    }
-
-    .leaderboard-note {
-      margin-top: 15px;
-      text-align: center;
-      color: #6c757d;
-      font-style: italic;
-    }
-  </style>
 </head>
 <body>
   <header></header>
@@ -360,10 +206,9 @@ export const homePage = (content: string): string => `
               limitInfoElement.innerHTML = \`
                 <div class="daily-limit-display">
                   <div class="limit-counter">
-                    <span class="games-left">\${data.gamesRemaining}</span>
-                    <span class="games-left-label">games left today</span>
+                    <span class="games-left">\${data.gamesRemaining} games left today</span>
                   </div>
-                  \${data.gamesRemaining <= 1 ? '<div class="limit-warning">⚠️ Last game of the day!</div>' : ''}
+                  \${data.gamesRemaining <= 1 ? '<div class="limit-warning">⚠️ Play Again Tomorrow!</div>' : ''}
                 </div>
               \`;
             }
@@ -811,53 +656,6 @@ export const playerStandingsContent = (standings: any[], currentUser?: string): 
   `;
 };
 
-/**
- * Player standings component (legacy - for page-based standings)
- */
-export const playerStandings = (standings: any[], currentUser?: string): string => {
-  if (!standings || standings.length === 0) {
-    return `
-    <div class="player-standings">
-      <h3>🏆 Player Standings</h3>
-      <div class="standings-empty">
-        <p>No players have won games yet. Be the first!</p>
-      </div>
-    </div>
-    `;
-  }
-
-  return `
-  <div class="player-standings">
-    <div class="standings-header-bar">
-      <button class="back-to-game-button" onclick="window.location.href = '/'">
-        ← Back to Game
-      </button>
-      <h3>🏆 Player Standings</h3>
-      <div></div>
-    </div>
-    
-    <div class="standings-header">
-      <span class="rank-header">Rank</span>
-      <span class="player-header">Player</span>
-      <span class="wins-header">Wins</span>
-      <span class="time-header">Avg Time</span>
-    </div>
-    <div class="standings-list">
-      ${standings.map((standing, index) => `
-        <div class="standing-row ${standing.username === currentUser ? 'current-user' : ''}">
-          <span class="rank">${index + 1}</span>
-          <span class="player-name">${standing.displayName}</span>
-          <span class="wins">${standing.totalWins}</span>
-          <span class="avg-time">${standing.averageTime}s</span>
-        </div>
-      `).join('')}
-    </div>
-    <div class="standings-note">
-      <small>Ranked by total wins, then by average completion time</small>
-    </div>
-  </div>
-  `;
-};
 
 /**
  * Daily limit reached component
@@ -890,8 +688,8 @@ export const dailyLimitReached = (gamesPlayed: number, gamesRemaining: number, u
       </div>
 
       <div class="limit-actions">
-        <button class="standings-link-button" onclick="window.location.href = '/standings'">
-          🏆 View Player Standings
+        <button class="standings-link-button" onclick="window.location.href = '/'">
+          🎮 Back to Game
         </button>
         
         ${username ? `
@@ -996,10 +794,7 @@ export const welcomeScreen = (username?: string): string => {
     <!-- Welcome content -->
     <div class="welcome-content">
       <div class="welcome-message">
-        <h2>🎯 Ready to Play Hangman?</h2>
-        ${username ? `
-          <p>Welcome back, <strong>${username.split('@')[0]}</strong>!</p>
-        ` : ''}
+        <h3>🎯 Ready to Play Hangman?</h3>
         <p>Click the <strong>🔄 New Game</strong> button above to begin your hangman challenge.</p>
         
         <div class="game-rules">

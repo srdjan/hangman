@@ -424,29 +424,6 @@ export const timeExpiredHandler = async (request: Request, authState?: AuthState
   return new Response(gameComponent(updatedState), { headers });
 };
 
-/**
- * Handle standings request
- */
-export const standingsHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
-  try {
-    const { getPlayerStandings } = await import("../auth/kv.ts");
-    const { playerStandings, homePage } = await import("../views/home.ts");
-    
-    const standings = await getPlayerStandings(20); // Top 20 players
-    const currentUser = authState?.username;
-    
-    const standingsComponent = playerStandings(standings, currentUser);
-    
-    const headers = new Headers({
-      "Content-Type": "text/html; charset=utf-8"
-    });
-
-    return new Response(homePage(standingsComponent), { headers });
-  } catch (error) {
-    console.error("Error in standingsHandler:", error);
-    return new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
-  }
-};
 
 /**
  * Handle daily limit info API request
