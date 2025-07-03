@@ -91,6 +91,21 @@ const getOrCreateGameSession = async (request: Request, authState?: AuthState): 
   }
 
   if (!sessionId || !gameState) {
+    // Check daily limit before creating new game
+    if (authState?.username) {
+      try {
+        const { checkDailyLimit } = await import("../auth/kv.ts");
+        const limitCheck = await checkDailyLimit(authState.username);
+        
+        if (!limitCheck.canPlay) {
+          return err(new Error(`DAILY_LIMIT_REACHED:${limitCheck.gamesPlayed}:${limitCheck.gamesRemaining}`));
+        }
+      } catch (error) {
+        console.error("Error checking daily limit:", error);
+        // Continue without limit check if there's an error
+      }
+    }
+
     const gameResult = await createGame("hard", "Words", 1, authState?.username);
     if (!gameResult.ok) {
       return gameResult;
@@ -107,6 +122,20 @@ export const gameHandler = async (request: Request, _params?: Record<string, str
   const sessionResult = await getOrCreateGameSession(request, authState);
 
   if (!sessionResult.ok) {
+    // Check if it's a daily limit error
+    if (sessionResult.error.message.startsWith('DAILY_LIMIT_REACHED:')) {
+      const parts = sessionResult.error.message.split(':');
+      const gamesPlayed = parseInt(parts[1]);
+      const gamesRemaining = parseInt(parts[2]);
+      
+      const { dailyLimitReached, homePage } = await import("../views/home.ts");
+      const content = dailyLimitReached(gamesPlayed, gamesRemaining, authState?.username);
+      
+      return new Response(homePage(content), {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
+    
     return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
   }
 
@@ -125,6 +154,25 @@ export const gameHandler = async (request: Request, _params?: Record<string, str
  * Handle new game creation request
  */
 export const newGameHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
+  // Check daily limit before creating new game
+  if (authState?.username) {
+    try {
+      const { checkDailyLimit } = await import("../auth/kv.ts");
+      const limitCheck = await checkDailyLimit(authState.username);
+      
+      if (!limitCheck.canPlay) {
+        const { dailyLimitReached, homePage } = await import("../views/home.ts");
+        const content = dailyLimitReached(limitCheck.gamesPlayed, limitCheck.gamesRemaining, authState.username);
+        
+        return new Response(homePage(content), {
+          headers: { "Content-Type": "text/html; charset=utf-8" }
+        });
+      }
+    } catch (error) {
+      console.error("Error checking daily limit in newGameHandler:", error);
+    }
+  }
+
   const sessionResult = await getOrCreateGameSession(request, authState);
 
   if (!sessionResult.ok) {
@@ -208,6 +256,16 @@ export const guessHandler = async (request: Request, params: Record<string, stri
 
   // Log successful game completion and save statistics
   if (gameState.status === "playing" && (updatedState.status === "won" || updatedState.status === "lost")) {
+    // Increment daily game count for completed games
+    if (updatedState.username) {
+      try {
+        const { incrementDailyGameCount } = await import("../auth/kv.ts");
+        await incrementDailyGameCount(updatedState.username);
+      } catch (error) {
+        console.error("Failed to increment daily game count:", error);
+      }
+    }
+
     if (updatedState.status === "won") {
       const sequenceNumber = await logGameCompletion(updatedState, "guess");
       // Add sequence number to the updated state for display
@@ -291,6 +349,16 @@ export const hintHandler = async (request: Request, authState?: AuthState): Prom
 
   // Log successful game completion and save statistics
   if (gameState.status === "playing" && (updatedState.status === "won" || updatedState.status === "lost")) {
+    // Increment daily game count for completed games
+    if (updatedState.username) {
+      try {
+        const { incrementDailyGameCount } = await import("../auth/kv.ts");
+        await incrementDailyGameCount(updatedState.username);
+      } catch (error) {
+        console.error("Failed to increment daily game count:", error);
+      }
+    }
+
     if (updatedState.status === "won") {
       const sequenceNumber = await logGameCompletion(updatedState, "hint");
       // Add sequence number to the updated state for display
@@ -366,6 +434,16 @@ export const timeExpiredHandler = async (request: Request, authState?: AuthState
   // Create time expired state
   const updatedState = createTimeExpiredState(gameState);
 
+  // Increment daily game count for time expired games
+  if (updatedState.username) {
+    try {
+      const { incrementDailyGameCount } = await import("../auth/kv.ts");
+      await incrementDailyGameCount(updatedState.username);
+    } catch (error) {
+      console.error("Failed to increment daily game count:", error);
+    }
+  }
+
   // Save updated statistics to persistent storage if user is authenticated
   if (updatedState.username) {
     try {
@@ -407,6 +485,37 @@ export const standingsHandler = async (request: Request, authState?: AuthState):
   } catch (error) {
     console.error("Error in standingsHandler:", error);
     return new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
+  }
+};
+
+/**
+ * Handle daily limit info API request
+ */
+export const dailyLimitInfoHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
+  if (!authState?.username) {
+    return new Response(JSON.stringify({ error: "Not authenticated" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
+    const { checkDailyLimit } = await import("../auth/kv.ts");
+    const limitCheck = await checkDailyLimit(authState.username);
+    
+    return new Response(JSON.stringify({
+      gamesPlayed: limitCheck.gamesPlayed,
+      gamesRemaining: limitCheck.gamesRemaining,
+      canPlay: limitCheck.canPlay
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error) {
+    console.error("Error in dailyLimitInfoHandler:", error);
+    return new Response(JSON.stringify({ error: "Failed to get limit info" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 };
 

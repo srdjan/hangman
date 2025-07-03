@@ -349,10 +349,40 @@ export const homePage = (content: string): string => `
     // Initialize timer on page load
     initializeOrUpdateTimer();
 
+    // Load daily limit info asynchronously
+    function loadDailyLimitInfo() {
+      const limitInfoElement = document.getElementById('daily-limit-info');
+      if (limitInfoElement) {
+        fetch('/api/daily-limit-info')
+          .then(response => response.json())
+          .then(data => {
+            if (data.gamesRemaining !== undefined) {
+              limitInfoElement.innerHTML = \`
+                <div class="daily-limit-display">
+                  <div class="limit-counter">
+                    <span class="games-left">\${data.gamesRemaining}</span>
+                    <span class="games-left-label">games left today</span>
+                  </div>
+                  \${data.gamesRemaining <= 1 ? '<div class="limit-warning">⚠️ Last game of the day!</div>' : ''}
+                </div>
+              \`;
+            }
+          })
+          .catch(error => {
+            console.error('Error loading daily limit info:', error);
+            limitInfoElement.innerHTML = '';
+          });
+      }
+    }
+
+    // Load daily limit info on page load
+    loadDailyLimitInfo();
+
     // Listen for HTMX events to reinitialize timer after updates
     document.addEventListener('htmx:afterSettle', function(event) {
       if (event.detail.target && event.detail.target.id === 'game-container') {
         initializeOrUpdateTimer();
+        loadDailyLimitInfo();
       }
     });
   </script>
@@ -640,6 +670,12 @@ export const gameStatsContent = (state: GameState): string => {
       </div>
     </div>
     
+    ${state.username ? `
+    <div id="daily-limit-info" class="daily-limit-info">
+      <div class="loading-text">Loading daily limit info...</div>
+    </div>
+    ` : ''}
+    
     ${state.winSequenceNumber ? `
     <div class="recent-win-info">
       <h4>🏆 Recent Achievement</h4>
@@ -757,4 +793,74 @@ export const playerStandings = (standings: any[], currentUser?: string): string 
     </div>
   </div>
   `;
+};
+
+/**
+ * Daily limit reached component
+ */
+export const dailyLimitReached = (gamesPlayed: number, gamesRemaining: number, username?: string): string => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const resetTime = tomorrow.toLocaleString();
+
+  return `
+  <div class="daily-limit-container">
+    <div class="limit-message">
+      <h2>🎯 Daily Game Limit Reached</h2>
+      <div class="limit-details">
+        <div class="games-played">
+          <span class="limit-number">${gamesPlayed}</span>
+          <span class="limit-label">Games Played Today</span>
+        </div>
+        <div class="limit-separator">of</div>
+        <div class="games-total">
+          <span class="limit-number">5</span>
+          <span class="limit-label">Daily Maximum</span>
+        </div>
+      </div>
+      
+      <div class="reset-info">
+        <p>🕛 Your daily games will reset at midnight</p>
+        <p class="reset-time">Come back tomorrow to continue playing!</p>
+      </div>
+
+      <div class="limit-actions">
+        <button class="standings-link-button" onclick="window.location.href = '/standings'">
+          🏆 View Player Standings
+        </button>
+        
+        ${username ? `
+          <button class="logout-link-button" onclick="fetch('/auth/logout', {method: 'POST'}).then(() => window.location.href = '/login')">
+            🚪 Logout
+          </button>
+        ` : ''}
+      </div>
+      
+      <div class="limit-note">
+        <small>Daily limits help ensure fair gameplay and encourage balanced gaming habits.</small>
+      </div>
+    </div>
+  </div>
+  `;
+};
+
+/**
+ * Games remaining indicator for active games
+ */
+export const gamesRemainingIndicator = async (username: string): Promise<string> => {
+  try {
+    const { checkDailyLimit } = await import("../auth/kv.ts");
+    const limitCheck = await checkDailyLimit(username);
+    
+    return `
+    <div class="games-remaining">
+      <span class="remaining-count">${limitCheck.gamesRemaining}</span>
+      <span class="remaining-label">games remaining today</span>
+    </div>
+    `;
+  } catch (error) {
+    console.error("Error getting games remaining:", error);
+    return '';
+  }
 };

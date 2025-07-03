@@ -655,7 +655,7 @@ button:active:not(:disabled) {
 .wins {
   text-align: center;
   font-weight: 600;
-  color: var(--success-color);
+  color: var(--primary-color);
 }
 
 .avg-time {
@@ -675,6 +675,206 @@ button:active:not(:disabled) {
   text-align: center;
   margin-top: 0.75rem;
   color: #6b7280;
+}
+
+/* Daily limit reached */
+.daily-limit-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.limit-message {
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  border: 2px solid #ffc107;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 8px 20px rgba(255, 193, 7, 0.3);
+}
+
+.limit-message h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #856404;
+  font-size: 1.8rem;
+}
+
+.limit-details {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.games-played,
+.games-total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.limit-number {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #dc3545;
+  font-family: 'Courier New', monospace;
+}
+
+.games-total .limit-number {
+  color: #856404;
+}
+
+.limit-label {
+  font-size: 0.9rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.limit-separator {
+  font-size: 1.2rem;
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.reset-info {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 0.5rem;
+}
+
+.reset-info p {
+  margin: 0.5rem 0;
+  color: #495057;
+}
+
+.reset-time {
+  font-weight: 600;
+  color: #28a745;
+}
+
+.limit-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.standings-link-button,
+.logout-link-button {
+  background: var(--secondary-color);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.logout-link-button {
+  background: #6c757d;
+}
+
+.standings-link-button:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.logout-link-button:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.limit-note {
+  margin-top: 1rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Games remaining indicator */
+.games-remaining {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: rgba(40, 167, 69, 0.1);
+  border: 1px solid rgba(40, 167, 69, 0.3);
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.remaining-count {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #28a745;
+  font-family: 'Courier New', monospace;
+}
+
+.remaining-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Daily limit display in stats */
+.daily-limit-info {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: rgba(40, 167, 69, 0.05);
+  border: 1px solid rgba(40, 167, 69, 0.2);
+  border-radius: 0.5rem;
+}
+
+.daily-limit-display {
+  text-align: center;
+}
+
+.limit-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.games-left {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #28a745;
+  font-family: 'Courier New', monospace;
+}
+
+.games-left-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.limit-warning {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  border-radius: 0.25rem;
+  color: #856404;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.loading-text {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
 }
 
 /* Game statistics */

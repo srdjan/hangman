@@ -283,3 +283,71 @@ export async function getUserRank(username: string): Promise<number | null> {
   const userIndex = standings.findIndex(s => s.username === username);
   return userIndex === -1 ? null : userIndex + 1;
 }
+
+// Daily game limit management
+export interface UserDailyGames {
+  username: string;
+  date: string; // YYYY-MM-DD format
+  gamesPlayed: number;
+  lastGameTime: string; // ISO timestamp
+}
+
+export const DAILY_GAME_LIMIT = 5;
+
+function getTodayDateString(): string {
+  return new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+export async function getDailyGameCount(username: string, date?: string): Promise<number> {
+  const kvStore = await getKv();
+  const dateStr = date || getTodayDateString();
+  
+  const result = await kvStore.get<UserDailyGames>(["daily_games", username, dateStr]);
+  return result.value?.gamesPlayed || 0;
+}
+
+export async function incrementDailyGameCount(username: string): Promise<number> {
+  const kvStore = await getKv();
+  const dateStr = getTodayDateString();
+  const key = ["daily_games", username, dateStr];
+  
+  // Get current count
+  const currentResult = await kvStore.get<UserDailyGames>(key);
+  const current = currentResult.value;
+  
+  const newCount = (current?.gamesPlayed || 0) + 1;
+  const updated: UserDailyGames = {
+    username,
+    date: dateStr,
+    gamesPlayed: newCount,
+    lastGameTime: new Date().toISOString()
+  };
+  
+  await kvStore.set(key, updated);
+  return newCount;
+}
+
+export async function checkDailyLimit(username: string): Promise<{ canPlay: boolean; gamesPlayed: number; gamesRemaining: number }> {
+  const gamesPlayed = await getDailyGameCount(username);
+  const canPlay = gamesPlayed < DAILY_GAME_LIMIT;
+  const gamesRemaining = Math.max(0, DAILY_GAME_LIMIT - gamesPlayed);
+  
+  return {
+    canPlay,
+    gamesPlayed,
+    gamesRemaining
+  };
+}
+
+export async function cleanupOldDailyRecords(): Promise<void> {
+  const kvStore = await getKv();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
+  
+  for await (const { key, value } of kvStore.list<UserDailyGames>({ prefix: ["daily_games"] })) {
+    if (value && value.date < cutoffDate) {
+      await kvStore.delete(key);
+    }
+  }
+}
