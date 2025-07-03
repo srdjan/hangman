@@ -227,6 +227,72 @@ export const homePage = (content: string): string => `
 
     // Make closeWelcomeNotification global for onclick handler
     window.closeWelcomeNotification = closeWelcomeNotification;
+
+    // Countdown timer logic
+    function startCountdownTimer() {
+      const timerElement = document.getElementById('countdown-timer');
+      const numberElement = document.getElementById('countdown-number');
+      
+      if (!timerElement || !numberElement) return;
+      
+      const startTime = parseInt(timerElement.dataset.startTime);
+      const timeLimit = parseInt(timerElement.dataset.timeLimit);
+      
+      if (!startTime || !timeLimit) return;
+      
+      function updateTimer() {
+        const elapsedTime = (Date.now() - startTime) / 1000; // in seconds
+        const remainingTime = Math.max(0, Math.ceil(timeLimit - elapsedTime));
+        
+        numberElement.textContent = remainingTime.toString();
+        
+        // Update color classes based on remaining time
+        numberElement.className = 'countdown-number';
+        if (remainingTime >= 21) {
+          numberElement.classList.add('time-normal');
+        } else if (remainingTime >= 11) {
+          numberElement.classList.add('time-warning');
+        } else {
+          numberElement.classList.add('time-critical');
+        }
+        
+        // Auto-submit when time runs out
+        if (remainingTime <= 0) {
+          clearInterval(window.countdownInterval);
+          // Submit time expired request
+          fetch('/game/time-expired', {
+            method: 'POST',
+            headers: {
+              'HX-Request': 'true',
+              'HX-Target': '#game-container'
+            }
+          }).then(response => response.text())
+            .then(html => {
+              document.getElementById('game-container').outerHTML = html;
+            })
+            .catch(error => {
+              console.error('Error handling time expired:', error);
+            });
+          return;
+        }
+      }
+      
+      // Clear any existing interval
+      if (window.countdownInterval) {
+        clearInterval(window.countdownInterval);
+      }
+      
+      // Update immediately
+      updateTimer();
+      
+      // Update every second
+      window.countdownInterval = setInterval(updateTimer, 1000);
+    }
+
+    // Start countdown timer when page loads if game is playing
+    if (document.getElementById('countdown-timer')) {
+      startCountdownTimer();
+    }
   </script>
 </body>
 </html>
@@ -240,6 +306,9 @@ export const gameComponent = (state: GameState): string => `
       <h2>Hangman</h2>
       ${state.username ? `<div class="user-info">Welcome, ${state.username.split('@')[0]}!</div>` : ''}
     </div>
+
+    <!-- Countdown timer in center -->
+    ${countdownTimer(state)}
 
     <div class="game-nav">
       <!-- Dashboard toggle button -->
@@ -382,7 +451,18 @@ export const statusDisplay = (state: GameState): string => {
         : "";
       return [`${baseMessage}${sequenceMessage}`, "win"];
     })
-    .with("lost", () => [`Game Over! The word was ${state.word}.`, "lose"])
+    .with("lost", () => {
+      // Check if the game was lost due to time expiration
+      const isTimeExpired = state.endTime && 
+        (state.endTime - state.startTime) / 1000 >= state.timeLimit &&
+        state.wrongGuesses < state.maxWrong;
+      
+      const message = isTimeExpired 
+        ? `⏰ Time's Up! The word was ${state.word}.`
+        : `Game Over! The word was ${state.word}.`;
+      
+      return [message, "lose"];
+    })
     .exhaustive();
 
   return `
@@ -535,6 +615,27 @@ export const hintButton = (state: GameState): string => {
       <span class="hint-icon">💡</span>
       <span class="hint-text">Hint (${hintsLeft} left)</span>
     </button>
+  </div>
+  `;
+};
+
+/**
+ * Countdown timer component
+ */
+export const countdownTimer = (state: GameState): string => {
+  if (state.status !== "playing") {
+    return `<div class="countdown-timer" style="visibility: hidden;"></div>`;
+  }
+
+  const elapsedTime = (Date.now() - state.startTime) / 1000; // in seconds
+  const remainingTime = Math.max(0, Math.ceil(state.timeLimit - elapsedTime));
+
+  return `
+  <div class="countdown-timer" id="countdown-timer" data-start-time="${state.startTime}" data-time-limit="${state.timeLimit}">
+    <div class="countdown-display">
+      <span class="countdown-number" id="countdown-number">${remainingTime}</span>
+      <span class="countdown-label">seconds left</span>
+    </div>
   </div>
   `;
 };

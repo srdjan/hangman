@@ -69,9 +69,44 @@ export const createGame = async (
     hintsAllowed,
     startTime: Date.now(),
     endTime: null,
+    timeLimit: 30, // 30 seconds per game
     statistics,
     username
   });
+};
+
+/**
+ * Check if game time has expired
+ */
+export const checkTimeExpired = (state: GameState): boolean => {
+  if (state.status !== "playing") {
+    return false;
+  }
+  
+  const elapsedTime = (Date.now() - state.startTime) / 1000; // in seconds
+  return elapsedTime >= state.timeLimit;
+};
+
+/**
+ * Create a new game state with time expired (lost status)
+ */
+export const createTimeExpiredState = (state: GameState): GameState => {
+  const endTime = Date.now();
+  const totalGuesses = state.guessedLetters.size;
+  
+  const statistics = {
+    ...state.statistics,
+    gamesPlayed: state.statistics.gamesPlayed + 1,
+    currentStreak: 0, // Time expired = loss, reset streak
+    totalGuesses: state.statistics.totalGuesses + totalGuesses
+  };
+
+  return {
+    ...state,
+    status: "lost" as const,
+    endTime,
+    statistics
+  };
 };
 
 /**

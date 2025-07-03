@@ -39,6 +39,7 @@ export interface GameState {
   readonly hintsAllowed: number;
   readonly startTime: number;
   readonly endTime: number | null;
+  readonly timeLimit: number; // Time limit in seconds
   readonly statistics: GameStatistics;
   readonly username?: string;
   winSequenceNumber?: number; // Mutable for adding after win detection

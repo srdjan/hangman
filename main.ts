@@ -3,7 +3,7 @@
 // Import dependencies using direct URLs for Deno Deploy
 import * as effection from "jsr:@effection/effection";
 import { createRouter } from "./src/routes/router.ts";
-import { gameHandler, newGameHandler, guessHandler, hintHandler, staticFileHandler } from "./src/routes/handlers.ts";
+import { gameHandler, newGameHandler, guessHandler, hintHandler, timeExpiredHandler, staticFileHandler } from "./src/routes/handlers.ts";
 import { authHandler } from "./src/routes/auth.ts";
 import { requireAuth } from "./src/middleware/auth.ts";
 import { rateLimit, securityHeaders } from "./src/middleware/rateLimiting.ts";
@@ -42,6 +42,14 @@ const protectedHintHandler = async (request: Request, params: Record<string, str
   return hintHandler(request, authResult);
 };
 
+const protectedTimeExpiredHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof Response) {
+    return authResult; // Redirect to login
+  }
+  return timeExpiredHandler(request, authResult);
+};
+
 // Auth route handlers
 const loginHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
   return new Response(loginPage(), {
@@ -72,6 +80,7 @@ const runServer = function* () {
     { path: "/new-game", handler: protectedNewGameHandler },
     { path: "/guess/:letter", handler: protectedGuessHandler },
     { path: "/hint", handler: protectedHintHandler },
+    { path: "/game/time-expired", handler: protectedTimeExpiredHandler },
     { path: "/login", handler: loginHandler },
     { path: "/auth/register/options", handler: authRouteHandler },
     { path: "/auth/register/verify", handler: authRouteHandler },

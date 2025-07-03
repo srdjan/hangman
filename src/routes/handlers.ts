@@ -174,6 +174,29 @@ export const guessHandler = async (request: Request, params: Record<string, stri
 
   const [sessionId, gameState] = sessionResult.value;
 
+  // Check if time has expired before processing guess
+  const { checkTimeExpired, createTimeExpiredState } = await import("../state/game.ts");
+  if (checkTimeExpired(gameState)) {
+    const timeExpiredState = createTimeExpiredState(gameState);
+    
+    // Save updated statistics if user is authenticated
+    if (timeExpiredState.username) {
+      try {
+        const { updateUserStatistics } = await import("../auth/kv.ts");
+        await updateUserStatistics(timeExpiredState.username, timeExpiredState.statistics);
+      } catch (error) {
+        console.error("Failed to save user statistics:", error);
+      }
+    }
+    
+    setSession(sessionId, timeExpiredState);
+    const headers = new Headers({
+      "Content-Type": "text/html; charset=utf-8",
+      "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+    });
+    return new Response(gameComponent(timeExpiredState), { headers });
+  }
+
   // Process the guess and update the session
   const updatedStateResult = processGuess(gameState, letter);
 
@@ -223,6 +246,29 @@ export const hintHandler = async (request: Request, authState?: AuthState): Prom
 
   const [sessionId, gameState] = sessionResult.value;
 
+  // Check if time has expired before processing hint
+  const { checkTimeExpired, createTimeExpiredState } = await import("../state/game.ts");
+  if (checkTimeExpired(gameState)) {
+    const timeExpiredState = createTimeExpiredState(gameState);
+    
+    // Save updated statistics if user is authenticated
+    if (timeExpiredState.username) {
+      try {
+        const { updateUserStatistics } = await import("../auth/kv.ts");
+        await updateUserStatistics(timeExpiredState.username, timeExpiredState.statistics);
+      } catch (error) {
+        console.error("Failed to save user statistics:", error);
+      }
+    }
+    
+    setSession(sessionId, timeExpiredState);
+    const headers = new Headers({
+      "Content-Type": "text/html; charset=utf-8",
+      "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+    });
+    return new Response(gameComponent(timeExpiredState), { headers });
+  }
+
   // Process the hint and update the session
   const updatedStateResult = getHint(gameState);
 
@@ -248,6 +294,63 @@ export const hintHandler = async (request: Request, authState?: AuthState): Prom
       } catch (error) {
         console.error("Failed to save user statistics:", error);
       }
+    }
+  }
+
+  setSession(sessionId, updatedState);
+
+  const headers = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+  });
+
+  return new Response(gameComponent(updatedState), { headers });
+};
+
+/**
+ * Handle time expired request
+ */
+export const timeExpiredHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
+  const sessionResult = await getOrCreateGameSession(request, authState);
+  if (!sessionResult.ok) {
+    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
+  }
+
+  const [sessionId, gameState] = sessionResult.value;
+
+  // Check if game is still playing and time has actually expired
+  if (gameState.status !== "playing") {
+    // Game already ended, just return current state
+    return new Response(gameComponent(gameState), {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+      }
+    });
+  }
+
+  const { checkTimeExpired, createTimeExpiredState } = await import("../state/game.ts");
+  
+  if (!checkTimeExpired(gameState)) {
+    // Time hasn't actually expired yet, return current state
+    return new Response(gameComponent(gameState), {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+      }
+    });
+  }
+
+  // Create time expired state
+  const updatedState = createTimeExpiredState(gameState);
+
+  // Save updated statistics to persistent storage if user is authenticated
+  if (updatedState.username) {
+    try {
+      const { updateUserStatistics } = await import("../auth/kv.ts");
+      await updateUserStatistics(updatedState.username, updatedState.statistics);
+    } catch (error) {
+      console.error("Failed to save user statistics:", error);
     }
   }
 
