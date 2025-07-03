@@ -209,3 +209,77 @@ export async function updateUserStatistics(username: string, statistics: UserSta
   const kvStore = await getKv();
   await kvStore.set(["user_stats", username], statistics);
 }
+
+// Player standings management
+export interface PlayerStanding {
+  username: string;
+  displayName: string;
+  totalWins: number;
+  totalTime: number; // Total time in seconds across all wins
+  averageTime: number; // Average time per win
+  lastWin: string; // ISO timestamp of last win
+}
+
+export async function updatePlayerStanding(username: string, gameTimeSeconds: number): Promise<void> {
+  const kvStore = await getKv();
+  
+  // Get current standing or create new one
+  const currentResult = await kvStore.get<PlayerStanding>(["standings", username]);
+  const current = currentResult.value;
+  
+  // Get user display name
+  const user = await getUser(username);
+  const displayName = user?.displayName || username.split('@')[0];
+  
+  let updated: PlayerStanding;
+  
+  if (current) {
+    // Update existing standing
+    updated = {
+      ...current,
+      totalWins: current.totalWins + 1,
+      totalTime: current.totalTime + gameTimeSeconds,
+      averageTime: Math.round((current.totalTime + gameTimeSeconds) / (current.totalWins + 1)),
+      lastWin: new Date().toISOString()
+    };
+  } else {
+    // Create new standing
+    updated = {
+      username,
+      displayName,
+      totalWins: 1,
+      totalTime: gameTimeSeconds,
+      averageTime: gameTimeSeconds,
+      lastWin: new Date().toISOString()
+    };
+  }
+  
+  await kvStore.set(["standings", username], updated);
+}
+
+export async function getPlayerStandings(limit: number = 20): Promise<PlayerStanding[]> {
+  const kvStore = await getKv();
+  const standings: PlayerStanding[] = [];
+  
+  for await (const { value } of kvStore.list<PlayerStanding>({ prefix: ["standings"] })) {
+    if (value) {
+      standings.push(value);
+    }
+  }
+  
+  // Sort by total wins (descending), then by average time (ascending)
+  standings.sort((a, b) => {
+    if (a.totalWins !== b.totalWins) {
+      return b.totalWins - a.totalWins; // More wins = higher rank
+    }
+    return a.averageTime - b.averageTime; // Less average time = higher rank
+  });
+  
+  return standings.slice(0, limit);
+}
+
+export async function getUserRank(username: string): Promise<number | null> {
+  const standings = await getPlayerStandings(1000); // Get all standings to calculate rank
+  const userIndex = standings.findIndex(s => s.username === username);
+  return userIndex === -1 ? null : userIndex + 1;
+}

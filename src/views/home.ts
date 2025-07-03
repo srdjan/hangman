@@ -382,6 +382,15 @@ export const gameComponent = (state: GameState): string => `
         <span class="dashboard-icon">📊</span>
       </button>
       
+      <!-- Standings button -->
+      <button
+        class="standings-button"
+        aria-label="View Player Standings"
+        onclick="window.location.href = '/standings'"
+      >
+        <span class="standings-icon">🏆</span>
+      </button>
+      
       <!-- New Game button - only active when game is finished -->
       <button
         class="new-game-nav ${state.status === 'playing' ? 'disabled' : ''}"
@@ -697,6 +706,54 @@ export const countdownTimer = (state: GameState): string => {
     <div class="countdown-display">
       <span class="countdown-number" id="countdown-number">${remainingTime}</span>
       <span class="countdown-label">seconds left</span>
+    </div>
+  </div>
+  `;
+};
+
+/**
+ * Player standings component
+ */
+export const playerStandings = (standings: any[], currentUser?: string): string => {
+  if (!standings || standings.length === 0) {
+    return `
+    <div class="player-standings">
+      <h3>🏆 Player Standings</h3>
+      <div class="standings-empty">
+        <p>No players have won games yet. Be the first!</p>
+      </div>
+    </div>
+    `;
+  }
+
+  return `
+  <div class="player-standings">
+    <div class="standings-header-bar">
+      <button class="back-to-game-button" onclick="window.location.href = '/'">
+        ← Back to Game
+      </button>
+      <h3>🏆 Player Standings</h3>
+      <div></div>
+    </div>
+    
+    <div class="standings-header">
+      <span class="rank-header">Rank</span>
+      <span class="player-header">Player</span>
+      <span class="wins-header">Wins</span>
+      <span class="time-header">Avg Time</span>
+    </div>
+    <div class="standings-list">
+      ${standings.map((standing, index) => `
+        <div class="standing-row ${standing.username === currentUser ? 'current-user' : ''}">
+          <span class="rank">${index + 1}</span>
+          <span class="player-name">${standing.displayName}</span>
+          <span class="wins">${standing.totalWins}</span>
+          <span class="avg-time">${standing.averageTime}s</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="standings-note">
+      <small>Ranked by total wins, then by average completion time</small>
     </div>
   </div>
   `;

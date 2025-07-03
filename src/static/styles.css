@@ -440,6 +440,7 @@ button:active:not(:disabled) {
 
 /* Navigation buttons */
 .dashboard-toggle,
+.standings-button,
 .new-game-nav,
 .logout-button {
   background: var(--primary-color);
@@ -458,6 +459,7 @@ button:active:not(:disabled) {
 }
 
 .dashboard-toggle:hover,
+.standings-button:hover,
 .logout-button:hover {
   background: #3a506b;
   transform: translateY(-2px);
@@ -546,6 +548,133 @@ button:active:not(:disabled) {
     transform: scale(1.1);
     opacity: 0.8;
   }
+}
+
+/* Player standings */
+.player-standings {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: rgba(46, 204, 113, 0.05);
+  border: 1px solid rgba(46, 204, 113, 0.1);
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.standings-header-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.back-to-game-button {
+  background: var(--secondary-color);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.back-to-game-button:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.player-standings h3 {
+  margin: 0;
+  color: var(--primary-color);
+  text-align: center;
+  font-size: 1.3rem;
+}
+
+.standings-header {
+  display: grid;
+  grid-template-columns: 60px 1fr 80px 90px;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(46, 204, 113, 0.1);
+  border-radius: 0.25rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+.standings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.standing-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 80px 90px;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.5);
+  transition: background-color 0.2s ease;
+  align-items: center;
+}
+
+.standing-row:hover {
+  background: rgba(46, 204, 113, 0.1);
+}
+
+.standing-row.current-user {
+  background: rgba(52, 152, 219, 0.15);
+  border: 1px solid rgba(52, 152, 219, 0.3);
+  font-weight: 600;
+}
+
+.standing-row.current-user:hover {
+  background: rgba(52, 152, 219, 0.2);
+}
+
+.rank {
+  text-align: center;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.player-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wins {
+  text-align: center;
+  font-weight: 600;
+  color: var(--success-color);
+}
+
+.avg-time {
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.standings-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.standings-note {
+  text-align: center;
+  margin-top: 0.75rem;
+  color: #6b7280;
 }
 
 /* Game statistics */
@@ -725,6 +854,7 @@ footer {
 
   /* Make navigation buttons smaller and more compact on mobile */
   .dashboard-toggle,
+  .standings-button,
   .new-game-nav,
   .logout-button {
     width: 1.8rem;

@@ -212,6 +212,17 @@ export const guessHandler = async (request: Request, params: Record<string, stri
       const sequenceNumber = await logGameCompletion(updatedState, "guess");
       // Add sequence number to the updated state for display
       updatedState.winSequenceNumber = sequenceNumber;
+      
+      // Update player standings for wins
+      if (updatedState.username && updatedState.endTime) {
+        try {
+          const gameTimeSeconds = Math.round((updatedState.endTime - updatedState.startTime) / 1000);
+          const { updatePlayerStanding } = await import("../auth/kv.ts");
+          await updatePlayerStanding(updatedState.username, gameTimeSeconds);
+        } catch (error) {
+          console.error("Failed to update player standings:", error);
+        }
+      }
     }
     
     // Save updated statistics to persistent storage if user is authenticated
@@ -284,6 +295,17 @@ export const hintHandler = async (request: Request, authState?: AuthState): Prom
       const sequenceNumber = await logGameCompletion(updatedState, "hint");
       // Add sequence number to the updated state for display
       updatedState.winSequenceNumber = sequenceNumber;
+      
+      // Update player standings for wins
+      if (updatedState.username && updatedState.endTime) {
+        try {
+          const gameTimeSeconds = Math.round((updatedState.endTime - updatedState.startTime) / 1000);
+          const { updatePlayerStanding } = await import("../auth/kv.ts");
+          await updatePlayerStanding(updatedState.username, gameTimeSeconds);
+        } catch (error) {
+          console.error("Failed to update player standings:", error);
+        }
+      }
     }
     
     // Save updated statistics to persistent storage if user is authenticated
@@ -362,6 +384,30 @@ export const timeExpiredHandler = async (request: Request, authState?: AuthState
   });
 
   return new Response(gameComponent(updatedState), { headers });
+};
+
+/**
+ * Handle standings request
+ */
+export const standingsHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
+  try {
+    const { getPlayerStandings } = await import("../auth/kv.ts");
+    const { playerStandings, homePage } = await import("../views/home.ts");
+    
+    const standings = await getPlayerStandings(20); // Top 20 players
+    const currentUser = authState?.username;
+    
+    const standingsComponent = playerStandings(standings, currentUser);
+    
+    const headers = new Headers({
+      "Content-Type": "text/html; charset=utf-8"
+    });
+
+    return new Response(homePage(standingsComponent), { headers });
+  } catch (error) {
+    console.error("Error in standingsHandler:", error);
+    return new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
+  }
 };
 
 /**
