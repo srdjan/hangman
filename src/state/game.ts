@@ -69,7 +69,7 @@ export const createGame = async (
     hintsAllowed,
     startTime: Date.now(),
     endTime: null,
-    timeLimit: 30, // 30 seconds per game
+    timeLimit: 60, // 30 seconds per game
     statistics,
     username
   });

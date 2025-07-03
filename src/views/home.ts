@@ -228,37 +228,69 @@ export const homePage = (content: string): string => `
     // Make closeWelcomeNotification global for onclick handler
     window.closeWelcomeNotification = closeWelcomeNotification;
 
+    // Global timer state management
+    window.gameTimerState = window.gameTimerState || {
+      startTime: null,
+      timeLimit: null,
+      interval: null,
+      gameId: null
+    };
+
     // Countdown timer logic
-    function startCountdownTimer() {
+    function initializeOrUpdateTimer() {
       const timerElement = document.getElementById('countdown-timer');
       const numberElement = document.getElementById('countdown-number');
       
-      if (!timerElement || !numberElement) return;
+      if (!timerElement || !numberElement) {
+        // No timer element means game is not playing, clear any existing timer
+        if (window.gameTimerState.interval) {
+          clearInterval(window.gameTimerState.interval);
+          window.gameTimerState.interval = null;
+        }
+        return;
+      }
       
       const startTime = parseInt(timerElement.dataset.startTime);
       const timeLimit = parseInt(timerElement.dataset.timeLimit);
+      const gameId = timerElement.dataset.gameId || 'unknown';
       
       if (!startTime || !timeLimit) return;
       
-      function updateTimer() {
-        const elapsedTime = (Date.now() - startTime) / 1000; // in seconds
-        const remainingTime = Math.max(0, Math.ceil(timeLimit - elapsedTime));
-        
-        numberElement.textContent = remainingTime.toString();
-        
-        // Update color classes based on remaining time
-        numberElement.className = 'countdown-number';
-        if (remainingTime >= 21) {
-          numberElement.classList.add('time-normal');
-        } else if (remainingTime >= 11) {
-          numberElement.classList.add('time-warning');
-        } else {
-          numberElement.classList.add('time-critical');
+      // Check if this is a new game or same game
+      const isNewGame = window.gameTimerState.gameId !== gameId || 
+                        window.gameTimerState.startTime !== startTime;
+      
+      if (isNewGame) {
+        // Clear old timer if exists
+        if (window.gameTimerState.interval) {
+          clearInterval(window.gameTimerState.interval);
         }
+        
+        // Update timer state for new game
+        window.gameTimerState.startTime = startTime;
+        window.gameTimerState.timeLimit = timeLimit;
+        window.gameTimerState.gameId = gameId;
+        
+        // Start new timer
+        startNewTimer();
+      } else {
+        // Same game, just update the display without restarting timer
+        updateTimerDisplay();
+      }
+    }
+
+    function startNewTimer() {
+      function updateTimer() {
+        const elapsedTime = (Date.now() - window.gameTimerState.startTime) / 1000;
+        const remainingTime = Math.max(0, Math.ceil(window.gameTimerState.timeLimit - elapsedTime));
+        
+        updateTimerDisplay(remainingTime);
         
         // Auto-submit when time runs out
         if (remainingTime <= 0) {
-          clearInterval(window.countdownInterval);
+          clearInterval(window.gameTimerState.interval);
+          window.gameTimerState.interval = null;
+          
           // Submit time expired request
           fetch('/game/time-expired', {
             method: 'POST',
@@ -268,7 +300,14 @@ export const homePage = (content: string): string => `
             }
           }).then(response => response.text())
             .then(html => {
-              document.getElementById('game-container').outerHTML = html;
+              const gameContainer = document.getElementById('game-container');
+              gameContainer.outerHTML = html;
+              
+              // Process new content with HTMX
+              const newContainer = document.getElementById('game-container');
+              if (newContainer && window.htmx) {
+                window.htmx.process(newContainer);
+              }
             })
             .catch(error => {
               console.error('Error handling time expired:', error);
@@ -277,22 +316,45 @@ export const homePage = (content: string): string => `
         }
       }
       
-      // Clear any existing interval
-      if (window.countdownInterval) {
-        clearInterval(window.countdownInterval);
-      }
-      
       // Update immediately
       updateTimer();
       
       // Update every second
-      window.countdownInterval = setInterval(updateTimer, 1000);
+      window.gameTimerState.interval = setInterval(updateTimer, 1000);
     }
 
-    // Start countdown timer when page loads if game is playing
-    if (document.getElementById('countdown-timer')) {
-      startCountdownTimer();
+    function updateTimerDisplay(remainingTime) {
+      const numberElement = document.getElementById('countdown-number');
+      if (!numberElement) return;
+      
+      // Calculate remaining time if not provided
+      if (remainingTime === undefined) {
+        const elapsedTime = (Date.now() - window.gameTimerState.startTime) / 1000;
+        remainingTime = Math.max(0, Math.ceil(window.gameTimerState.timeLimit - elapsedTime));
+      }
+      
+      numberElement.textContent = remainingTime.toString();
+      
+      // Update color classes based on remaining time
+      numberElement.className = 'countdown-number';
+      if (remainingTime >= 21) {
+        numberElement.classList.add('time-normal');
+      } else if (remainingTime >= 11) {
+        numberElement.classList.add('time-warning');
+      } else {
+        numberElement.classList.add('time-critical');
+      }
     }
+
+    // Initialize timer on page load
+    initializeOrUpdateTimer();
+
+    // Listen for HTMX events to reinitialize timer after updates
+    document.addEventListener('htmx:afterSettle', function(event) {
+      if (event.detail.target && event.detail.target.id === 'game-container') {
+        initializeOrUpdateTimer();
+      }
+    });
   </script>
 </body>
 </html>
@@ -631,7 +693,7 @@ export const countdownTimer = (state: GameState): string => {
   const remainingTime = Math.max(0, Math.ceil(state.timeLimit - elapsedTime));
 
   return `
-  <div class="countdown-timer" id="countdown-timer" data-start-time="${state.startTime}" data-time-limit="${state.timeLimit}">
+  <div class="countdown-timer" id="countdown-timer" data-start-time="${state.startTime}" data-time-limit="${state.timeLimit}" data-game-id="${state.id}">
     <div class="countdown-display">
       <span class="countdown-number" id="countdown-number">${remainingTime}</span>
       <span class="countdown-label">seconds left</span>
