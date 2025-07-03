@@ -209,7 +209,29 @@ export const authHandler = async (req: Request): Promise<Response> => {
         await updateUser(username, user);
         await deleteChallenge(username);
 
-        return Response.json({ success: true });
+        // Create session for immediate login after registration
+        const sessionId = generateSessionId();
+        await createSession(sessionId, username);
+
+        console.log("Session created for new user:", sessionId);
+
+        const cookie = [
+          `session=${sessionId}`,
+          `Path=/`,
+          `HttpOnly`,
+          `SameSite=Strict`,
+          `Max-Age=86400`, // 24 hours
+        ].join("; ");
+
+        console.log("Sending successful registration response with auto-login");
+
+        return new Response(JSON.stringify({ success: true, redirect: "/", newUser: true }), {
+          status: 200,
+          headers: {
+            "Set-Cookie": cookie,
+            "Content-Type": "application/json",
+          },
+        });
       } catch (error) {
         console.error("Registration verification error:", error);
         console.error("Error stack:", error.stack);

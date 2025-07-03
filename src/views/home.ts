@@ -49,6 +49,65 @@ export const homePage = (content: string): string => `
       10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
       20%, 40%, 60%, 80% { transform: translateX(5px); }
     }
+
+    /* Welcome notification styles */
+    .welcome-notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      max-width: 300px;
+      animation: slideInRight 0.5s ease-out;
+      font-weight: 500;
+    }
+
+    .welcome-notification .close-btn {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      float: right;
+      font-size: 18px;
+      line-height: 1;
+      margin-left: 12px;
+      opacity: 0.8;
+      padding: 0;
+    }
+
+    .welcome-notification .close-btn:hover {
+      opacity: 1;
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+
+    .welcome-notification.fade-out {
+      animation: slideOutRight 0.3s ease-in forwards;
+    }
   </style>
 </head>
 <body>
@@ -59,6 +118,55 @@ export const homePage = (content: string): string => `
   <footer>
     <p>Cooked with ❤️ by <a href="https://srdjan.github.io" target="_blank" rel="noopener noreferrer">⊣˚∆˚⊢</a></p>
   </footer>
+
+  <script>
+    // Check if this is a new user welcome
+    (function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isWelcome = urlParams.get('welcome') === 'true';
+      
+      if (isWelcome) {
+        showWelcomeNotification();
+        // Clean up URL without reloading page
+        const url = new URL(window.location);
+        url.searchParams.delete('welcome');
+        window.history.replaceState({}, document.title, url.pathname + url.search);
+      }
+    })();
+
+    function showWelcomeNotification() {
+      const notification = document.createElement('div');
+      notification.className = 'welcome-notification';
+      notification.innerHTML = \`
+        <button class="close-btn" onclick="closeWelcomeNotification(this.parentElement)">&times;</button>
+        <div>
+          <strong>🎉 Welcome to Hangman!</strong><br>
+          Your account has been created successfully. Enjoy the game!
+        </div>
+      \`;
+      
+      document.body.appendChild(notification);
+      
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        if (notification.parentElement) {
+          closeWelcomeNotification(notification);
+        }
+      }, 5000);
+    }
+
+    function closeWelcomeNotification(notification) {
+      notification.classList.add('fade-out');
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.parentElement.removeChild(notification);
+        }
+      }, 300);
+    }
+
+    // Make closeWelcomeNotification global for onclick handler
+    window.closeWelcomeNotification = closeWelcomeNotification;
+  </script>
 </body>
 </html>
 `;

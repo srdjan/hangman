@@ -408,7 +408,23 @@ export const loginPage = (error?: string): string => `
         });
 
         if (verifyResponse.ok) {
-          alert('Registration successful! You can now login.');
+          const result = await verifyResponse.json();
+          console.log('Registration result:', result);
+          
+          if (result.success && result.redirect) {
+            console.log('Registration successful, redirecting to:', result.redirect);
+            // Add newUser flag to URL so we can show welcome message
+            const redirectUrl = result.newUser ? result.redirect + '?welcome=true' : result.redirect;
+            window.location.href = redirectUrl;
+            return;
+          } else if (result.success) {
+            // Fallback redirect if no redirect specified
+            console.log('Registration successful, redirecting to home page...');
+            window.location.href = '/?welcome=true';
+            return;
+          } else {
+            throw new Error('Registration verification failed');
+          }
         } else {
           throw new Error('Registration verification failed');
         }
