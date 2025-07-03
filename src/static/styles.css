@@ -152,7 +152,7 @@ svg {
 .word-display {
   display: flex;
   justify-content: center;
-  gap: clamp(0.5rem, 2vw, 1rem);
+  gap: clamp(0.3rem, 2vw, 1rem);
   margin: clamp(1rem, 3vw, 2rem) 0;
   font-size: var(--font-size-word);
   letter-spacing: var(--letter-spacing);
@@ -189,16 +189,28 @@ svg {
   font-weight: bold;
 }
 
+/* Keyboard container */
+.keyboard-container {
+  margin-top: clamp(1rem, 3vw, 2rem);
+}
+
 /* Keyboard */
 .keyboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(var(--button-size), 1fr));
   gap: clamp(0.25rem, 1vw, 0.5rem);
-  margin-top: clamp(1rem, 3vw, 2rem);
+  margin-bottom: clamp(0.5rem, 1vw, 1rem);
 }
 
 .keyboard.game-over {
   opacity: 0.7;
+}
+
+/* Restart container */
+.restart-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(0.25rem, 1vw, 0.5rem);
 }
 
 button {
@@ -243,7 +255,11 @@ button:active:not(:disabled) {
 
 .restart {
   background: var(--success-color);
-  grid-column: span 3;
+  width: 100%;
+}
+
+.restart:hover:not(:disabled) {
+  background: #27ae60;
 }
 
 /* Game header and navigation */

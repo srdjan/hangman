@@ -105,3 +105,77 @@ export async function cleanupExpiredSessions(): Promise<void> {
 
 // Setup periodic cleanup (every 10 minutes)
 setInterval(cleanupExpiredSessions, 1000 * 60 * 10);
+
+// Win sequence management
+export interface WinRecord {
+  sequenceNumber: number;
+  username: string;
+  word: string;
+  completionTime: string;
+  duration: number;
+  totalGuesses: number;
+  hintsUsed: number;
+  completionMethod: "guess" | "hint";
+  difficulty: string;
+  category: string;
+  gameId: string;
+}
+
+export async function getNextWinSequence(): Promise<number> {
+  const kvStore = await getKv();
+  
+  // Use atomic operation to increment the counter
+  const result = await kvStore.atomic()
+    .mutate({
+      type: "sum",
+      key: ["global", "win_sequence_counter"],
+      value: new Deno.KvU64(1n),
+    })
+    .commit();
+    
+  if (result.ok) {
+    // Get the updated counter value
+    const counterResult = await kvStore.get<Deno.KvU64>(["global", "win_sequence_counter"]);
+    return Number(counterResult.value?.value || 1n);
+  } else {
+    // Fallback: try to get current value and increment manually
+    const counterResult = await kvStore.get<Deno.KvU64>(["global", "win_sequence_counter"]);
+    const currentValue = Number(counterResult.value?.value || 0n);
+    const nextValue = currentValue + 1;
+    
+    await kvStore.set(["global", "win_sequence_counter"], new Deno.KvU64(BigInt(nextValue)));
+    return nextValue;
+  }
+}
+
+export async function recordWin(winRecord: WinRecord): Promise<void> {
+  const kvStore = await getKv();
+  
+  // Store the win record with sequence number as key for easy retrieval
+  await kvStore.set(["wins", winRecord.sequenceNumber], winRecord);
+  
+  // Also store by username for user-specific queries
+  await kvStore.set(["user_wins", winRecord.username, winRecord.sequenceNumber], winRecord);
+}
+
+export async function getTotalWins(): Promise<number> {
+  const kvStore = await getKv();
+  const counterResult = await kvStore.get<Deno.KvU64>(["global", "win_sequence_counter"]);
+  return Number(counterResult.value?.value || 0n);
+}
+
+export async function getRecentWins(limit: number = 10): Promise<WinRecord[]> {
+  const kvStore = await getKv();
+  const wins: WinRecord[] = [];
+  
+  for await (const { value } of kvStore.list<WinRecord>({ prefix: ["wins"] }, { 
+    limit, 
+    reverse: true // Get most recent first
+  })) {
+    if (value) {
+      wins.push(value);
+    }
+  }
+  
+  return wins;
+}

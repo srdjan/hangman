@@ -108,6 +108,67 @@ export const homePage = (content: string): string => `
     .welcome-notification.fade-out {
       animation: slideOutRight 0.3s ease-in forwards;
     }
+
+    /* Win sequence styling */
+    .win-sequence {
+      display: inline-block;
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      color: #333;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 1.1em;
+      margin-top: 10px;
+      box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+      animation: winSequencePulse 2s ease-in-out infinite;
+    }
+
+    @keyframes winSequencePulse {
+      0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+      }
+      50% { 
+        transform: scale(1.05);
+        box-shadow: 0 4px 16px rgba(255, 215, 0, 0.5);
+      }
+    }
+
+    .status.win {
+      text-align: center;
+    }
+
+    /* Achievement section styling */
+    .recent-win-info {
+      margin-top: 20px;
+      padding: 15px;
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 10px;
+      border-left: 4px solid #FFD700;
+    }
+
+    .recent-win-info h4 {
+      margin: 0 0 10px 0;
+      color: #495057;
+      font-size: 1.1em;
+    }
+
+    .achievement-badge {
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      color: #333;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(255, 215, 0, 0.2);
+    }
+
+    .leaderboard-note {
+      margin-top: 15px;
+      text-align: center;
+      color: #6c757d;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -302,7 +363,13 @@ export const wordDisplay = (state: GameState): string => {
 export const statusDisplay = (state: GameState): string => {
   const [message, statusClass] = match(state.status)
     .with("playing", () => ["Guess the word!", ""])
-    .with("won", () => [`🎉 You won! The word was ${state.word}.`, "win"])
+    .with("won", () => {
+      const baseMessage = `🎉 You won! The word was ${state.word}.`;
+      const sequenceMessage = state.winSequenceNumber 
+        ? `<br><span class="win-sequence">🏅 You are winner #${state.winSequenceNumber}!</span>`
+        : "";
+      return [`${baseMessage}${sequenceMessage}`, "win"];
+    })
     .with("lost", () => [`Game Over! The word was ${state.word}.`, "lose"])
     .exhaustive();
 
@@ -321,39 +388,43 @@ export const keyboard = (state: GameState): string => {
     .otherwise(() => true);
 
   return `
-  <div class="keyboard ${isGameOver ? 'game-over' : ''}" role="group" aria-label="Keyboard">
-    ${[...letters].map(letter => {
-    const isGuessed = state.guessedLetters.has(letter);
-    const isCorrect = state.word.includes(letter) && isGuessed;
-    const isIncorrect = !state.word.includes(letter) && isGuessed;
-    let ariaLabel = letter;
+  <div class="keyboard-container">
+    <div class="keyboard ${isGameOver ? 'game-over' : ''}" role="group" aria-label="Keyboard">
+      ${[...letters].map(letter => {
+      const isGuessed = state.guessedLetters.has(letter);
+      const isCorrect = state.word.includes(letter) && isGuessed;
+      const isIncorrect = !state.word.includes(letter) && isGuessed;
+      let ariaLabel = letter;
 
-    if (isCorrect) {
-      ariaLabel = `${letter}, correct guess`;
-    } else if (isIncorrect) {
-      ariaLabel = `${letter}, incorrect guess`;
-    }
+      if (isCorrect) {
+        ariaLabel = `${letter}, correct guess`;
+      } else if (isIncorrect) {
+        ariaLabel = `${letter}, incorrect guess`;
+      }
 
-    return `
+      return `
+        <button
+          data-letter="${letter}"
+          aria-label="${ariaLabel}"
+          aria-pressed="${isGuessed ? 'true' : 'false'}"
+          ${isGuessed ? 'disabled' : ''}
+          ${isGameOver ? 'disabled' : ''}
+          class="${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''}"
+          hx-post="/guess/${letter}"
+          hx-target="#game-container"
+          hx-swap="outerHTML"
+        >${letter}</button>
+      `}).join('')}
+    </div>
+    <div class="restart-container">
       <button
-        data-letter="${letter}"
-        aria-label="${ariaLabel}"
-        aria-pressed="${isGuessed ? 'true' : 'false'}"
-        ${isGuessed ? 'disabled' : ''}
-        ${isGameOver ? 'disabled' : ''}
-        class="${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''}"
-        hx-post="/guess/${letter}"
+        class="restart"
+        aria-label="New Game"
+        hx-post="/new-game"
         hx-target="#game-container"
         hx-swap="outerHTML"
-      >${letter}</button>
-    `}).join('')}
-    <button
-      class="restart"
-      aria-label="New Game"
-      hx-post="/new-game"
-      hx-target="#game-container"
-      hx-swap="outerHTML"
-    >New Game</button>
+      >New Game</button>
+    </div>
   </div>
   `;
 };
@@ -415,6 +486,19 @@ export const gameStatsContent = (state: GameState): string => {
         <div class="stat-value">${state.status !== "playing" ? gameTime : ""}</div>
         <div class="stat-label">${state.status !== "playing" ? "Seconds" : ""}</div>
       </div>
+    </div>
+    
+    ${state.winSequenceNumber ? `
+    <div class="recent-win-info">
+      <h4>🏆 Recent Achievement</h4>
+      <div class="achievement-badge">
+        You are the <strong>#${state.winSequenceNumber}</strong> person to successfully complete this challenge!
+      </div>
+    </div>
+    ` : ''}
+    
+    <div class="leaderboard-note">
+      <small>📊 Global win tracking helps celebrate everyone's success!</small>
     </div>
   `;
 };

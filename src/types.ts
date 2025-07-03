@@ -41,6 +41,7 @@ export interface GameState {
   readonly endTime: number | null;
   readonly statistics: GameStatistics;
   readonly username?: string;
+  winSequenceNumber?: number; // Mutable for adding after win detection
 }
 
 /**

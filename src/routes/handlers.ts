@@ -10,7 +10,9 @@ import { Result, ok } from "../utils/result.ts";
 /**
  * Log successful game completion with timestamp and user info
  */
-function logGameCompletion(gameState: GameState, completionMethod: "guess" | "hint"): void {
+async function logGameCompletion(gameState: GameState, completionMethod: "guess" | "hint"): Promise<number> {
+  const { getNextWinSequence, recordWin } = await import("../auth/kv.ts");
+  
   const completionTime = new Date().toISOString();
   const username = gameState.username || "Anonymous";
   const word = gameState.word;
@@ -19,8 +21,12 @@ function logGameCompletion(gameState: GameState, completionMethod: "guess" | "hi
   const totalGuesses = gameState.guessedLetters.size;
   const hintsUsed = gameState.hintsUsed;
 
+  // Get the next win sequence number
+  const sequenceNumber = await getNextWinSequence();
+
   console.log("🎉 GAME COMPLETED SUCCESSFULLY! 🎉");
   console.log("=" .repeat(50));
+  console.log(`🏅 Win #${sequenceNumber} - Congratulations!`);
   console.log(`👤 Player: ${username}`);
   console.log(`📝 Word: ${word}`);
   console.log(`⏰ Completion Time: ${completionTime}`);
@@ -32,9 +38,27 @@ function logGameCompletion(gameState: GameState, completionMethod: "guess" | "hi
   console.log(`📂 Category: ${gameState.category}`);
   console.log("=" .repeat(50));
 
+  // Record the win in persistent storage
+  const winRecord = {
+    sequenceNumber,
+    username,
+    word,
+    completionTime,
+    duration: totalTimeSeconds,
+    totalGuesses,
+    hintsUsed,
+    completionMethod,
+    difficulty: gameState.difficulty,
+    category: gameState.category,
+    gameId: gameState.id
+  };
+
+  await recordWin(winRecord);
+
   // Also log in structured format for potential log parsing
   const logEntry = {
     event: "game_completed",
+    sequence_number: sequenceNumber,
     timestamp: completionTime,
     username,
     word,
@@ -48,6 +72,8 @@ function logGameCompletion(gameState: GameState, completionMethod: "guess" | "hi
   };
 
   console.log("STRUCTURED_LOG:", JSON.stringify(logEntry));
+  
+  return sequenceNumber;
 }
 
 const getOrCreateGameSession = (request: Request, authState?: AuthState): Result<[string, GameState]> => {
@@ -135,15 +161,15 @@ export const newGameHandler = async (request: Request, authState?: AuthState): P
 /**
  * Handle letter guess request
  */
-export const guessHandler = (request: Request, params: Record<string, string>, authState?: AuthState): Promise<Response> => {
+export const guessHandler = async (request: Request, params: Record<string, string>, authState?: AuthState): Promise<Response> => {
   const letter = params.letter?.toUpperCase() || "";
   if (!/^[A-Z]$/.test(letter)) {
-    return Promise.resolve(new Response("Invalid letter", { status: 400 }));
+    return new Response("Invalid letter", { status: 400 });
   }
 
   const sessionResult = getOrCreateGameSession(request, authState);
   if (!sessionResult.ok) {
-    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
   }
 
   const [sessionId, gameState] = sessionResult.value;
@@ -152,14 +178,16 @@ export const guessHandler = (request: Request, params: Record<string, string>, a
   const updatedStateResult = processGuess(gameState, letter);
 
   if (!updatedStateResult.ok) {
-    return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));
+    return new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 });
   }
 
   const updatedState = updatedStateResult.value;
 
   // Log successful game completion
   if (gameState.status === "playing" && updatedState.status === "won") {
-    logGameCompletion(updatedState, "guess");
+    const sequenceNumber = await logGameCompletion(updatedState, "guess");
+    // Add sequence number to the updated state for display
+    updatedState.winSequenceNumber = sequenceNumber;
   }
 
   setSession(sessionId, updatedState);
@@ -169,16 +197,16 @@ export const guessHandler = (request: Request, params: Record<string, string>, a
     "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
   });
 
-  return Promise.resolve(new Response(gameComponent(updatedState), { headers }));
+  return new Response(gameComponent(updatedState), { headers });
 };
 
 /**
  * Handle hint request
  */
-export const hintHandler = (request: Request, authState?: AuthState): Promise<Response> => {
+export const hintHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
   const sessionResult = getOrCreateGameSession(request, authState);
   if (!sessionResult.ok) {
-    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
   }
 
   const [sessionId, gameState] = sessionResult.value;
@@ -187,14 +215,16 @@ export const hintHandler = (request: Request, authState?: AuthState): Promise<Re
   const updatedStateResult = getHint(gameState);
 
   if (!updatedStateResult.ok) {
-    return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));
+    return new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 });
   }
 
   const updatedState = updatedStateResult.value;
 
   // Log successful game completion
   if (gameState.status === "playing" && updatedState.status === "won") {
-    logGameCompletion(updatedState, "hint");
+    const sequenceNumber = await logGameCompletion(updatedState, "hint");
+    // Add sequence number to the updated state for display
+    updatedState.winSequenceNumber = sequenceNumber;
   }
 
   setSession(sessionId, updatedState);
@@ -204,7 +234,7 @@ export const hintHandler = (request: Request, authState?: AuthState): Promise<Re
     "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
   });
 
-  return Promise.resolve(new Response(gameComponent(updatedState), { headers }));
+  return new Response(gameComponent(updatedState), { headers });
 };
 
 /**
