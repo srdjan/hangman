@@ -658,7 +658,73 @@ export const playerStandingsContent = (standings: any[], currentUser?: string): 
 
 
 /**
- * Daily limit reached component
+ * Daily limit reached page
+ */
+export const dailyLimitReachedPage = (gamesPlayed: number, gamesRemaining: number, username?: string): string => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const resetTime = tomorrow.toLocaleString();
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Limit Reached - Hangman Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="daily-limit-container">
+    <div class="limit-message">
+      <h2>🎯 Daily Game Limit Reached</h2>
+      <div class="limit-details">
+        <div class="games-played">
+          <span class="limit-number">${gamesPlayed}</span>
+          <span class="limit-label">Games Played Today</span>
+        </div>
+        <div class="limit-separator">of</div>
+        <div class="games-total">
+          <span class="limit-number">5</span>
+          <span class="limit-label">Daily Maximum</span>
+        </div>
+      </div>
+      
+      <div class="reset-info">
+        <p>🕛 Your daily games will reset at midnight</p>
+        <p class="reset-time">Come back tomorrow to continue playing!</p>
+      </div>
+
+      <div class="limit-actions">
+        <button class="standings-link-button" onclick="window.location.href = '/'">
+          🎮 Back to Game
+        </button>
+        
+        ${username ? `
+          <button class="logout-link-button" onclick="fetch('/auth/logout', {method: 'POST'}).then(() => window.location.href = '/login')">
+            🚪 Logout
+          </button>
+        ` : ''}
+      </div>
+      
+      <div class="limit-note">
+        <small>Daily limits help ensure fair gameplay and encourage balanced gaming habits.</small>
+      </div>
+    </div>
+  </div>
+  
+  <footer>
+    <p>Cooked with ❤️ by <a href="https://srdjan.github.io" target="_blank" rel="noopener noreferrer">⊣˚∆˚⊢</a></p>
+  </footer>
+</body>
+</html>
+  `;
+};
+
+/**
+ * Daily limit reached component (for embedding in other pages)
  */
 export const dailyLimitReached = (gamesPlayed: number, gamesRemaining: number, username?: string): string => {
   const tomorrow = new Date();

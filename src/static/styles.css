@@ -658,7 +658,7 @@ button:active:not(:disabled) {
 .daily-limit-container {
   width: 100%;
   max-width: 600px;
-  /* margin: 2rem auto; */
+  margin: 2rem auto;
   padding: 2rem;
   text-align: center;
 }
@@ -1006,6 +1006,40 @@ button:active:not(:disabled) {
   
   .welcome-nav {
     gap: 0.5rem;
+  }
+  
+  /* Daily limit responsive styles */
+  .daily-limit-container {
+    margin: auto;
+    padding: 0rem 0.5rem 0.5rem 0.5rem;
+    max-width: 95vw;
+  }
+  
+  .limit-message {
+    padding: 1rem 1rem;
+    margin: 0 auto;
+  }
+  
+  .limit-details {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .limit-separator {
+    order: -1;
+    margin-bottom: 0.5rem;
+  }
+  
+  .limit-actions {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  
+  .standings-link-button,
+  .logout-link-button {
+    width: 100%;
+    max-width: 250px;
+    margin: 0 auto;
   }
 }
 

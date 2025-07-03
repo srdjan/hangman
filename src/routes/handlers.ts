@@ -151,12 +151,28 @@ export const newGameHandler = async (request: Request, authState?: AuthState): P
       const gamesPlayed = parseInt(parts[1]);
       const gamesRemaining = parseInt(parts[2]);
       
-      const { dailyLimitReached, homePage } = await import("../views/home.ts");
-      const content = dailyLimitReached(gamesPlayed, gamesRemaining, authState?.username);
+      // Check if this is an HTMX request
+      const isHtmxRequest = request.headers.get('HX-Request') === 'true';
       
-      return new Response(homePage(content), {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
+      if (isHtmxRequest) {
+        // For HTMX requests, return the component wrapped in game-container div
+        const { dailyLimitReached } = await import("../views/home.ts");
+        const content = dailyLimitReached(gamesPlayed, gamesRemaining, authState?.username);
+        
+        const wrappedContent = `<div class="game-container" id="game-container">${content}</div>`;
+        
+        return new Response(wrappedContent, {
+          headers: { "Content-Type": "text/html; charset=utf-8" }
+        });
+      } else {
+        // For full page requests, return the complete page
+        const { dailyLimitReachedPage } = await import("../views/home.ts");
+        const pageContent = dailyLimitReachedPage(gamesPlayed, gamesRemaining, authState?.username);
+        
+        return new Response(pageContent, {
+          headers: { "Content-Type": "text/html; charset=utf-8" }
+        });
+      }
     }
     
     return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
