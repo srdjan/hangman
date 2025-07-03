@@ -7,6 +7,49 @@ import { Result, ok } from "../utils/result.ts";
 // Import categories if needed for validation
 // import { categories } from "../data/wordLists.ts";
 
+/**
+ * Log successful game completion with timestamp and user info
+ */
+function logGameCompletion(gameState: GameState, completionMethod: "guess" | "hint"): void {
+  const completionTime = new Date().toISOString();
+  const username = gameState.username || "Anonymous";
+  const word = gameState.word;
+  const totalTime = gameState.endTime ? gameState.endTime - gameState.startTime : 0;
+  const totalTimeSeconds = Math.round(totalTime / 1000);
+  const totalGuesses = gameState.guessedLetters.size;
+  const hintsUsed = gameState.hintsUsed;
+
+  console.log("🎉 GAME COMPLETED SUCCESSFULLY! 🎉");
+  console.log("=" .repeat(50));
+  console.log(`👤 Player: ${username}`);
+  console.log(`📝 Word: ${word}`);
+  console.log(`⏰ Completion Time: ${completionTime}`);
+  console.log(`⏱️  Game Duration: ${totalTimeSeconds} seconds`);
+  console.log(`🔤 Total Guesses: ${totalGuesses}`);
+  console.log(`💡 Hints Used: ${hintsUsed}`);
+  console.log(`✅ Completion Method: ${completionMethod === "guess" ? "Final letter guess" : "Hint revealed last letter"}`);
+  console.log(`🏆 Difficulty: ${gameState.difficulty}`);
+  console.log(`📂 Category: ${gameState.category}`);
+  console.log("=" .repeat(50));
+
+  // Also log in structured format for potential log parsing
+  const logEntry = {
+    event: "game_completed",
+    timestamp: completionTime,
+    username,
+    word,
+    duration_seconds: totalTimeSeconds,
+    total_guesses: totalGuesses,
+    hints_used: hintsUsed,
+    completion_method: completionMethod,
+    difficulty: gameState.difficulty,
+    category: gameState.category,
+    game_id: gameState.id
+  };
+
+  console.log("STRUCTURED_LOG:", JSON.stringify(logEntry));
+}
+
 const getOrCreateGameSession = (request: Request, authState?: AuthState): Result<[string, GameState]> => {
   const cookies = request.headers.get("cookie") || "";
   const sessionCookie = cookies
@@ -22,7 +65,7 @@ const getOrCreateGameSession = (request: Request, authState?: AuthState): Result
   }
 
   if (!sessionId || !gameState) {
-    const gameResult = createGame("hard", "Countries", 1, authState?.username);
+    const gameResult = createGame("hard", "Words", 1, authState?.username);
     if (!gameResult.ok) {
       return gameResult;
     }
@@ -65,9 +108,9 @@ export const newGameHandler = async (request: Request, authState?: AuthState): P
   const [sessionId, _] = sessionResult.value;
 
   try {
-    // Fixed values - all games are hard difficulty with countries category
+    // Fixed values - all games are hard difficulty with Words category
     const difficulty: "easy" | "medium" | "hard" = "hard";
-    const category = "Countries";
+    const category = "Words";
     const hintsAllowed = 1;
 
     const gameResult = createGame(difficulty, category, hintsAllowed, authState?.username);
@@ -112,14 +155,21 @@ export const guessHandler = (request: Request, params: Record<string, string>, a
     return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));
   }
 
-  setSession(sessionId, updatedStateResult.value);
+  const updatedState = updatedStateResult.value;
+
+  // Log successful game completion
+  if (gameState.status === "playing" && updatedState.status === "won") {
+    logGameCompletion(updatedState, "guess");
+  }
+
+  setSession(sessionId, updatedState);
 
   const headers = new Headers({
     "Content-Type": "text/html; charset=utf-8",
     "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
   });
 
-  return Promise.resolve(new Response(gameComponent(updatedStateResult.value), { headers }));
+  return Promise.resolve(new Response(gameComponent(updatedState), { headers }));
 };
 
 /**
@@ -140,14 +190,21 @@ export const hintHandler = (request: Request, authState?: AuthState): Promise<Re
     return Promise.resolve(new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 }));
   }
 
-  setSession(sessionId, updatedStateResult.value);
+  const updatedState = updatedStateResult.value;
+
+  // Log successful game completion
+  if (gameState.status === "playing" && updatedState.status === "won") {
+    logGameCompletion(updatedState, "hint");
+  }
+
+  setSession(sessionId, updatedState);
 
   const headers = new Headers({
     "Content-Type": "text/html; charset=utf-8",
     "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
   });
 
-  return Promise.resolve(new Response(gameComponent(updatedStateResult.value), { headers }));
+  return Promise.resolve(new Response(gameComponent(updatedState), { headers }));
 };
 
 /**
