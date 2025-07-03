@@ -251,6 +251,18 @@ export const gameComponent = (state: GameState): string => `
         <span class="dashboard-icon">📊</span>
       </button>
       
+      <!-- New Game button - only active when game is finished -->
+      <button
+        class="new-game-nav ${state.status === 'playing' ? 'disabled' : ''}"
+        aria-label="New Game"
+        ${state.status === 'playing' ? 'disabled' : ''}
+        hx-post="/new-game"
+        hx-target="#game-container"
+        hx-swap="outerHTML"
+      >
+        <span class="new-game-icon">🔄</span>
+      </button>
+      
       ${state.username ? `
         <!-- Logout button -->
         <button
@@ -388,43 +400,32 @@ export const keyboard = (state: GameState): string => {
     .otherwise(() => true);
 
   return `
-  <div class="keyboard-container">
-    <div class="keyboard ${isGameOver ? 'game-over' : ''}" role="group" aria-label="Keyboard">
-      ${[...letters].map(letter => {
-      const isGuessed = state.guessedLetters.has(letter);
-      const isCorrect = state.word.includes(letter) && isGuessed;
-      const isIncorrect = !state.word.includes(letter) && isGuessed;
-      let ariaLabel = letter;
+  <div class="keyboard ${isGameOver ? 'game-over' : ''}" role="group" aria-label="Keyboard">
+    ${[...letters].map(letter => {
+    const isGuessed = state.guessedLetters.has(letter);
+    const isCorrect = state.word.includes(letter) && isGuessed;
+    const isIncorrect = !state.word.includes(letter) && isGuessed;
+    let ariaLabel = letter;
 
-      if (isCorrect) {
-        ariaLabel = `${letter}, correct guess`;
-      } else if (isIncorrect) {
-        ariaLabel = `${letter}, incorrect guess`;
-      }
+    if (isCorrect) {
+      ariaLabel = `${letter}, correct guess`;
+    } else if (isIncorrect) {
+      ariaLabel = `${letter}, incorrect guess`;
+    }
 
-      return `
-        <button
-          data-letter="${letter}"
-          aria-label="${ariaLabel}"
-          aria-pressed="${isGuessed ? 'true' : 'false'}"
-          ${isGuessed ? 'disabled' : ''}
-          ${isGameOver ? 'disabled' : ''}
-          class="${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''}"
-          hx-post="/guess/${letter}"
-          hx-target="#game-container"
-          hx-swap="outerHTML"
-        >${letter}</button>
-      `}).join('')}
-    </div>
-    <div class="restart-container">
+    return `
       <button
-        class="restart"
-        aria-label="New Game"
-        hx-post="/new-game"
+        data-letter="${letter}"
+        aria-label="${ariaLabel}"
+        aria-pressed="${isGuessed ? 'true' : 'false'}"
+        ${isGuessed ? 'disabled' : ''}
+        ${isGameOver ? 'disabled' : ''}
+        class="${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''}"
+        hx-post="/guess/${letter}"
         hx-target="#game-container"
         hx-swap="outerHTML"
-      >New Game</button>
-    </div>
+      >${letter}</button>
+    `}).join('')}
   </div>
   `;
 };
