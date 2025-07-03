@@ -340,6 +340,167 @@ export const authHandler = async (req: Request): Promise<Response> => {
       }
     })
     
+    .with({ pathname: "/auth/conditional/options", method: "GET" }, async () => {
+      console.log("=== Conditional UI Options ===");
+      
+      try {
+        // For conditional UI, we generate options without specific allowCredentials
+        // This allows any registered passkey to be used
+        const opts = await generateAuthenticationOptions({
+          rpID: AUTH_CONFIG.RP_ID,
+          allowCredentials: [], // Empty array means any credential can be used
+          userVerification: 'preferred', // Use 'preferred' for conditional UI
+          timeout: 300000, // 5 minutes for conditional UI
+        });
+        
+        console.log("Generated conditional UI options:", JSON.stringify(opts, null, 2));
+
+        // Store challenge for later verification - we'll need the credential ID to know which user
+        // For now, store with a special key that we'll clean up later
+        const challengeBuffer = new TextEncoder().encode(opts.challenge);
+        await storeChallenge("conditional_ui", challengeBuffer);
+
+        return Response.json(opts);
+      } catch (error) {
+        console.error("Error generating conditional UI options:", error);
+        return new Response("Failed to generate conditional UI options", { status: 500 });
+      }
+    })
+    
+    .with({ pathname: "/auth/conditional/verify", method: "POST" }, async () => {
+      console.log("=== Conditional UI Verification ===");
+      
+      try {
+        const { username, credential } = await req.json();
+        console.log("Conditional verification for user:", username);
+        console.log("Credential ID:", credential.id);
+        
+        // Validate email domain
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@fadv\.com$/;
+        if (!emailRegex.test(username)) {
+          console.log("Invalid email domain:", username);
+          return new Response("Email must be from @fadv.com domain", { status: 400 });
+        }
+        
+        // Get user data
+        let user = await getUser(username);
+        if (!user) {
+          console.log("User not found:", username);
+          return new Response("User not found", { status: 404 });
+        }
+        
+        // Get the conditional challenge
+        const storedChallenge = await getChallenge("conditional_ui");
+        if (!storedChallenge) {
+          console.log("No conditional challenge found");
+          return new Response("No challenge found", { status: 400 });
+        }
+        
+        // Find the credential
+        const userCredential = user.credentials.find(c => c.credentialId === credential.rawId);
+        if (!userCredential) {
+          console.log("Credential not found for user");
+          return new Response("Credential not found", { status: 404 });
+        }
+        
+        console.log("Found user credential:", userCredential.credentialId);
+        
+        // Convert stored challenge back to string for SimpleWebAuthn
+        const storedChallengeString = new TextDecoder().decode(new Uint8Array(storedChallenge));
+        
+        const verification = await verifyAuthenticationResponse({
+          response: {
+            id: credential.id,
+            rawId: credential.rawId,
+            response: {
+              clientDataJSON: credential.response.clientDataJSON,
+              authenticatorData: credential.response.authenticatorData,
+              signature: credential.response.signature,
+              userHandle: credential.response.userHandle,
+            },
+            type: "public-key",
+          },
+          expectedChallenge: storedChallengeString,
+          expectedOrigin: AUTH_CONFIG.ORIGIN,
+          expectedRPID: AUTH_CONFIG.RP_ID,
+          authenticator: {
+            credentialID: userCredential.credentialId,
+            credentialPublicKey: userCredential.credentialPublicKey,
+            counter: userCredential.counter,
+          },
+          requireUserVerification: true,
+        });
+
+        if (!verification.verified) {
+          console.log("Conditional verification failed");
+          return Response.json({ success: false });
+        }
+
+        console.log("Conditional verification successful!");
+
+        // Create session
+        const sessionId = generateSessionId();
+        await createSession(sessionId, username);
+        await deleteChallenge("conditional_ui");
+
+        console.log("Session created:", sessionId);
+
+        const cookie = [
+          `session=${sessionId}`,
+          `Path=/`,
+          `HttpOnly`,
+          `SameSite=Strict`,
+          `Max-Age=86400`,
+        ].join("; ");
+
+        console.log("Sending successful conditional login response");
+
+        return new Response(JSON.stringify({ success: true, redirect: "/" }), {
+          status: 200,
+          headers: {
+            "Set-Cookie": cookie,
+            "Content-Type": "application/json",
+          },
+        });
+      } catch (error) {
+        console.error("Conditional verification error:", error);
+        return new Response("Conditional verification failed", { status: 500 });
+      }
+    })
+    
+    .with({ pathname: "/auth/identify", method: "POST" }, async () => {
+      console.log("=== Identify User by Credential ===");
+      
+      try {
+        const { credentialId } = await req.json();
+        console.log("Looking for credential ID:", credentialId);
+        
+        // Search through all users to find the one with this credential
+        const kvStore = await (await import("../auth/kv.ts")).getKv();
+        
+        for await (const { key, value } of kvStore.list({ prefix: ["user"] })) {
+          const user = value;
+          console.log("Checking user:", user.username, "credentials:", user.credentials?.length || 0);
+          
+          if (user.credentials) {
+            for (const cred of user.credentials) {
+              console.log("Comparing credential:", cred.credentialId, "with:", credentialId);
+              if (cred.credentialId === credentialId) {
+                console.log("Found matching user:", user.username);
+                return Response.json({ username: user.username });
+              }
+            }
+          }
+        }
+        
+        console.log("No user found for credential ID:", credentialId);
+        return new Response("User not found for this credential", { status: 404 });
+      } catch (error) {
+        console.error("Error identifying user:", error);
+        return new Response("Failed to identify user", { status: 500 });
+      }
+    })
+    
     .with({ pathname: "/auth/logout", method: "POST" }, async () => {
       const match = /(?:^|; )session=([^;]+)/.exec(req.headers.get("cookie") || "");
       const sessionId = match?.[1];

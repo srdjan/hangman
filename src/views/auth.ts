@@ -124,7 +124,7 @@ export const loginPage = (error?: string): string => `
           id="username" 
           class="username-input" 
           placeholder="Enter your @fadv.com email"
-          autocomplete="email webauthn"
+          autocomplete="username webauthn"
           pattern="[a-zA-Z0-9._%+-]+@fadv\\.com$"
           title="Please enter a valid @fadv.com email address"
           required
@@ -152,6 +152,9 @@ export const loginPage = (error?: string): string => `
     const usernameInput = document.getElementById('username');
     const loginBtn = document.getElementById('loginBtn');
     const registerBtn = document.getElementById('registerBtn');
+
+    // Global variable to track if conditional UI is available
+    let conditionalUIAvailable = false;
 
     // Utility functions
     function showLoading(button) {
@@ -196,6 +199,169 @@ export const loginPage = (error?: string): string => `
     function validateEmail(email) {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@fadv\.com$/;
       return emailRegex.test(email);
+    }
+
+    // Conditional UI (Autofill) function
+    async function startConditionalUI() {
+      try {
+        console.log('Starting conditional UI...');
+        
+        // Check if conditional UI is supported
+        if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) {
+          console.log('Conditional UI not supported');
+          return;
+        }
+        
+        const available = await PublicKeyCredential.isConditionalMediationAvailable();
+        if (!available) {
+          console.log('Conditional UI not available');
+          return;
+        }
+        
+        conditionalUIAvailable = true;
+        console.log('Conditional UI available, starting background request...');
+        
+        // Get conditional authentication options from server
+        const optionsResponse = await fetch('/auth/conditional/options');
+        if (!optionsResponse.ok) {
+          console.log('Failed to get conditional UI options');
+          return;
+        }
+        
+        const options = await optionsResponse.json();
+        console.log('Conditional UI options:', options);
+        
+        // Convert challenge to ArrayBuffer
+        options.challenge = base64ToArrayBuffer(options.challenge);
+        
+        const credential = await navigator.credentials.get({
+          publicKey: options,
+          mediation: 'conditional' // This is the key for conditional UI
+        });
+        
+        if (credential) {
+          console.log('User selected a passkey from conditional UI');
+          await handleConditionalLogin(credential);
+        }
+      } catch (error) {
+        console.log('Conditional UI error (this is normal if user cancels):', error);
+      }
+    }
+
+    // Handle login when user selects a passkey from conditional UI
+    async function handleConditionalLogin(credential) {
+      console.log('Handling conditional login...');
+      
+      try {
+        showLoading(loginBtn);
+        
+        // First, identify the user from the credential
+        const identifyResponse = await fetch('/auth/identify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            credentialId: credential.id
+          })
+        });
+        
+        if (!identifyResponse.ok) {
+          throw new Error('Failed to identify user from passkey');
+        }
+        
+        const { username } = await identifyResponse.json();
+        console.log('Identified user:', username);
+        
+        // Fill in the username field
+        usernameInput.value = username;
+        
+        // Now verify the credential using the conditional challenge
+        const verifyResponse = await fetch('/auth/conditional/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: username,
+            credential: {
+              id: credential.id,
+              rawId: arrayBufferToBase64(credential.rawId),
+              response: {
+                clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
+                authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
+                signature: arrayBufferToBase64(credential.response.signature),
+                userHandle: credential.response.userHandle ? arrayBufferToBase64(credential.response.userHandle) : null,
+              },
+            }
+          }),
+        });
+        
+        if (!verifyResponse.ok) {
+          throw new Error('Authentication failed');
+        }
+        
+        const result = await verifyResponse.json();
+        
+        if (result.success && result.redirect) {
+          window.location.href = result.redirect;
+        } else if (result.success) {
+          window.location.href = '/';
+        } else {
+          throw new Error('Login verification failed');
+        }
+      } catch (error) {
+        console.error('Conditional login error:', error);
+        showError('Login failed. Please try again.');
+      } finally {
+        hideLoading(loginBtn);
+      }
+    }
+
+    // Perform login with credential and username
+    async function performLogin(credential, username) {
+      showLoading(loginBtn);
+      
+      try {
+        // Get authentication options for this specific user
+        const optionsResponse = await fetch(\`/auth/login/options?username=\${encodeURIComponent(username)}\`);
+        if (!optionsResponse.ok) {
+          throw new Error('Failed to get login options');
+        }
+        
+        const options = await optionsResponse.json();
+        
+        // Verify the credential we already have
+        const verifyResponse = await fetch(\`/auth/login/verify?username=\${encodeURIComponent(username)}\`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: credential.id,
+            rawId: arrayBufferToBase64(credential.rawId),
+            response: {
+              clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
+              authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
+              signature: arrayBufferToBase64(credential.response.signature),
+              userHandle: credential.response.userHandle ? arrayBufferToBase64(credential.response.userHandle) : null,
+            },
+          }),
+        });
+        
+        if (!verifyResponse.ok) {
+          throw new Error('Authentication failed');
+        }
+        
+        const result = await verifyResponse.json();
+        
+        if (result.success && result.redirect) {
+          window.location.href = result.redirect;
+        } else if (result.success) {
+          window.location.href = '/';
+        } else {
+          throw new Error('Login verification failed');
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        showError(error.message || 'Login failed');
+      } finally {
+        hideLoading(loginBtn);
+      }
     }
 
     // Registration flow
@@ -365,6 +531,19 @@ export const loginPage = (error?: string): string => `
         loginBtn.click();
       }
     });
+
+    // Start conditional UI when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      startConditionalUI();
+    });
+
+    // Also start conditional UI immediately if DOMContentLoaded already fired
+    if (document.readyState === 'loading') {
+      // Document still loading, wait for DOMContentLoaded
+    } else {
+      // Document already loaded
+      startConditionalUI();
+    }
   </script>
 </body>
 </html>

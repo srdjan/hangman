@@ -77,6 +77,9 @@ const runServer = function* () {
     { path: "/auth/register/verify", handler: authRouteHandler },
     { path: "/auth/login/options", handler: authRouteHandler },
     { path: "/auth/login/verify", handler: authRouteHandler },
+    { path: "/auth/conditional/options", handler: authRouteHandler },
+    { path: "/auth/conditional/verify", handler: authRouteHandler },
+    { path: "/auth/identify", handler: authRouteHandler },
     { path: "/auth/logout", handler: authRouteHandler },
     { path: "/static/*", handler: staticFileHandler },
   ]);
