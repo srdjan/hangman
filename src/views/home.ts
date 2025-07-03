@@ -546,7 +546,7 @@ export const statusDisplay = (state: GameState): string => {
   const [message, statusClass] = match(state.status)
     .with("playing", () => ["Guess the word!", ""])
     .with("won", () => {
-      const baseMessage = `🎉 You won! The word was ${state.word}.`;
+      const baseMessage = `🎉 You didi it! The word was ${state.word}.`;
       const sequenceMessage = state.winSequenceNumber 
         ? `<br><span class="win-sequence">🏅 You are winner #${state.winSequenceNumber}!</span>`
         : "";
@@ -863,4 +863,94 @@ export const gamesRemainingIndicator = async (username: string): Promise<string>
     console.error("Error getting games remaining:", error);
     return '';
   }
+};
+
+/**
+ * Welcome screen component for users with no active game
+ */
+export const welcomeScreen = (username?: string): string => {
+  return `
+  <div class="game-container" id="game-container">
+    <!-- Top navigation bar -->
+    <div class="game-header">
+      <div class="game-title">
+        <h2>Hangman</h2>
+        ${username ? `<div class="user-info">Welcome, ${username.split('@')[0]}!</div>` : ''}
+      </div>
+
+      <!-- Empty space where countdown would be -->
+      <div class="countdown-timer" style="visibility: hidden;"></div>
+
+      <div class="game-nav">
+        <!-- Dashboard toggle button (disabled on welcome screen) -->
+        <button
+          class="dashboard-toggle disabled"
+          aria-label="Toggle statistics dashboard"
+          disabled
+        >
+          <span class="dashboard-icon">📊</span>
+        </button>
+        
+        <!-- Standings button -->
+        <button
+          class="standings-button"
+          aria-label="View Player Standings"
+          onclick="window.location.href = '/standings'"
+        >
+          <span class="standings-icon">🏆</span>
+        </button>
+        
+        <!-- New Game button - active on welcome screen -->
+        <button
+          class="new-game-nav"
+          aria-label="Start New Game"
+          hx-post="/new-game"
+          hx-target="#game-container"
+          hx-swap="outerHTML"
+        >
+          <span class="new-game-icon">🔄</span>
+        </button>
+        
+        ${username ? `
+          <!-- Logout button -->
+          <button
+            class="logout-button"
+            aria-label="Logout"
+            onclick="fetch('/auth/logout', {method: 'POST'}).then(() => window.location.href = '/login')"
+          >
+            <span class="logout-icon">🚪</span>
+          </button>
+        ` : ''}
+      </div>
+    </div>
+
+    <!-- Welcome content -->
+    <div class="welcome-content">
+      <div class="welcome-message">
+        <h2>🎯 Ready to Play Hangman?</h2>
+        ${username ? `
+          <p>Welcome back, <strong>${username.split('@')[0]}</strong>!</p>
+        ` : ''}
+        <p>Click the <strong>🔄 New Game</strong> button above to begin your hangman challenge.</p>
+        
+        <div class="game-rules">
+          <h3>📋 Game Rules</h3>
+          <ul>
+            <li>🎲 Guess the hidden word letter by letter</li>
+            <li>⏰ You have <strong>60 seconds</strong> to complete each game</li>
+            <li>💡 Use hints wisely - you get <strong>1 hint</strong> per game</li>
+            <li>🎮 Play up to <strong>5 games per day</strong></li>
+            <li>🏆 Compete for the best completion times on the leaderboard</li>
+          </ul>
+        </div>
+        
+        ${username ? `
+        <div id="daily-limit-info" class="daily-limit-info">
+          <div class="loading-text">Loading daily limit info...</div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+  </div>
+  `;
 };

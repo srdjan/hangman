@@ -3,7 +3,7 @@ import { getSession, setSession, createSession } from "../state/session.ts";
 import { homePage, gameComponent } from "../views/home.ts";
 import { GameState } from "../types.ts";
 import { AuthState } from "../auth/types.ts";
-import { Result, ok } from "../utils/result.ts";
+import { Result, ok, err } from "../utils/result.ts";
 // Import categories if needed for validation
 // import { categories } from "../data/wordLists.ts";
 
@@ -76,50 +76,73 @@ async function logGameCompletion(gameState: GameState, completionMethod: "guess"
   return sequenceNumber;
 }
 
-const getOrCreateGameSession = async (request: Request, authState?: AuthState): Promise<Result<[string, GameState], Error>> => {
+const getGameSession = (request: Request): [string | null, GameState | undefined] => {
   const cookies = request.headers.get("cookie") || "";
   const sessionCookie = cookies
     .split(";")
     .map(c => c.trim())
     .find(c => c.startsWith("hangman_session="));
 
-  let sessionId = sessionCookie?.split("=")[1];
-  let gameState: GameState | undefined;
+  const sessionId = sessionCookie?.split("=")[1] || null;
+  const gameState = sessionId ? getSession(sessionId) : undefined;
 
-  if (sessionId) {
-    gameState = getSession(sessionId);
-  }
+  return [sessionId, gameState];
+};
 
-  if (!sessionId || !gameState) {
-    // Check daily limit before creating new game
-    if (authState?.username) {
-      try {
-        const { checkDailyLimit } = await import("../auth/kv.ts");
-        const limitCheck = await checkDailyLimit(authState.username);
-        
-        if (!limitCheck.canPlay) {
-          return err(new Error(`DAILY_LIMIT_REACHED:${limitCheck.gamesPlayed}:${limitCheck.gamesRemaining}`));
-        }
-      } catch (error) {
-        console.error("Error checking daily limit:", error);
-        // Continue without limit check if there's an error
+const createNewGameSession = async (authState?: AuthState): Promise<Result<[string, GameState], Error>> => {
+  // Check daily limit before creating new game
+  if (authState?.username) {
+    try {
+      const { checkDailyLimit } = await import("../auth/kv.ts");
+      const limitCheck = await checkDailyLimit(authState.username);
+      
+      if (!limitCheck.canPlay) {
+        return err(new Error(`DAILY_LIMIT_REACHED:${limitCheck.gamesPlayed}:${limitCheck.gamesRemaining}`));
       }
+    } catch (error) {
+      console.error("Error checking daily limit:", error);
+      // Continue without limit check if there's an error
     }
-
-    const gameResult = await createGame("hard", "Words", 1, authState?.username);
-    if (!gameResult.ok) {
-      return gameResult;
-    }
-
-    gameState = gameResult.value;
-    sessionId = createSession(gameState);
   }
+
+  const gameResult = await createGame("hard", "Words", 1, authState?.username);
+  if (!gameResult.ok) {
+    return gameResult;
+  }
+
+  const gameState = gameResult.value;
+  const sessionId = createSession(gameState);
 
   return ok([sessionId, gameState]);
 };
 
 export const gameHandler = async (request: Request, _params?: Record<string, string>, authState?: AuthState): Promise<Response> => {
-  const sessionResult = await getOrCreateGameSession(request, authState);
+  const [sessionId, gameState] = getGameSession(request);
+
+  // If there's no active game, show welcome screen
+  if (!sessionId || !gameState) {
+    const { welcomeScreen, homePage } = await import("../views/home.ts");
+    const content = welcomeScreen(authState?.username);
+    
+    return new Response(homePage(content), {
+      headers: { "Content-Type": "text/html; charset=utf-8" }
+    });
+  }
+
+  const headers = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
+  });
+
+  const content = gameComponent(gameState);
+  return new Response(homePage(content), { headers });
+};
+
+/**
+ * Handle new game creation request
+ */
+export const newGameHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
+  const sessionResult = await createNewGameSession(authState);
 
   if (!sessionResult.ok) {
     // Check if it's a daily limit error
@@ -146,64 +169,7 @@ export const gameHandler = async (request: Request, _params?: Record<string, str
     "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
   });
 
-  const content = gameComponent(gameState);
-  return new Response(homePage(content), { headers });
-};
-
-/**
- * Handle new game creation request
- */
-export const newGameHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
-  // Check daily limit before creating new game
-  if (authState?.username) {
-    try {
-      const { checkDailyLimit } = await import("../auth/kv.ts");
-      const limitCheck = await checkDailyLimit(authState.username);
-      
-      if (!limitCheck.canPlay) {
-        const { dailyLimitReached, homePage } = await import("../views/home.ts");
-        const content = dailyLimitReached(limitCheck.gamesPlayed, limitCheck.gamesRemaining, authState.username);
-        
-        return new Response(homePage(content), {
-          headers: { "Content-Type": "text/html; charset=utf-8" }
-        });
-      }
-    } catch (error) {
-      console.error("Error checking daily limit in newGameHandler:", error);
-    }
-  }
-
-  const sessionResult = await getOrCreateGameSession(request, authState);
-
-  if (!sessionResult.ok) {
-    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
-  }
-
-  const [sessionId, _] = sessionResult.value;
-
-  try {
-    // Fixed values - all games are hard difficulty with Words category
-    const difficulty: "easy" | "medium" | "hard" = "hard";
-    const category = "Words";
-    const hintsAllowed = 1;
-
-    const gameResult = await createGame(difficulty, category, hintsAllowed, authState?.username);
-    if (!gameResult.ok) {
-      return new Response(`Error: ${gameResult.error.message}`, { status: 500 });
-    }
-
-    setSession(sessionId, gameResult.value);
-
-    const headers = new Headers({
-      "Content-Type": "text/html; charset=utf-8",
-      "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-    });
-
-    return new Response(gameComponent(gameResult.value), { headers });
-  } catch (error) {
-    console.error("Error in newGameHandler:", error);
-    return new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
-  }
+  return new Response(gameComponent(gameState), { headers });
 };
 
 /**
@@ -215,12 +181,10 @@ export const guessHandler = async (request: Request, params: Record<string, stri
     return new Response("Invalid letter", { status: 400 });
   }
 
-  const sessionResult = await getOrCreateGameSession(request, authState);
-  if (!sessionResult.ok) {
-    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
+  const [sessionId, gameState] = getGameSession(request);
+  if (!sessionId || !gameState) {
+    return new Response("No active game", { status: 400 });
   }
-
-  const [sessionId, gameState] = sessionResult.value;
 
   // Check if time has expired before processing guess
   const { checkTimeExpired, createTimeExpiredState } = await import("../state/game.ts");
@@ -308,12 +272,10 @@ export const guessHandler = async (request: Request, params: Record<string, stri
  * Handle hint request
  */
 export const hintHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
-  const sessionResult = await getOrCreateGameSession(request, authState);
-  if (!sessionResult.ok) {
-    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
+  const [sessionId, gameState] = getGameSession(request);
+  if (!sessionId || !gameState) {
+    return new Response("No active game", { status: 400 });
   }
-
-  const [sessionId, gameState] = sessionResult.value;
 
   // Check if time has expired before processing hint
   const { checkTimeExpired, createTimeExpiredState } = await import("../state/game.ts");
@@ -401,12 +363,10 @@ export const hintHandler = async (request: Request, authState?: AuthState): Prom
  * Handle time expired request
  */
 export const timeExpiredHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
-  const sessionResult = await getOrCreateGameSession(request, authState);
-  if (!sessionResult.ok) {
-    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
+  const [sessionId, gameState] = getGameSession(request);
+  if (!sessionId || !gameState) {
+    return new Response("No active game", { status: 400 });
   }
-
-  const [sessionId, gameState] = sessionResult.value;
 
   // Check if game is still playing and time has actually expired
   if (gameState.status !== "playing") {
