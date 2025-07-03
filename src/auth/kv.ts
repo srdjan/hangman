@@ -179,3 +179,33 @@ export async function getRecentWins(limit: number = 10): Promise<WinRecord[]> {
   
   return wins;
 }
+
+// User statistics management
+export interface UserStatistics {
+  gamesPlayed: number;
+  gamesWon: number;
+  currentStreak: number;
+  bestStreak: number;
+  totalGuesses: number;
+  averageGuessesPerWin: number;
+}
+
+export async function getUserStatistics(username: string): Promise<UserStatistics> {
+  const kvStore = await getKv();
+  const result = await kvStore.get<UserStatistics>(["user_stats", username]);
+  
+  // Return default statistics if none exist
+  return result.value || {
+    gamesPlayed: 0,
+    gamesWon: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    totalGuesses: 0,
+    averageGuessesPerWin: 0
+  };
+}
+
+export async function updateUserStatistics(username: string, statistics: UserStatistics): Promise<void> {
+  const kvStore = await getKv();
+  await kvStore.set(["user_stats", username], statistics);
+}

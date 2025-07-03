@@ -24,16 +24,36 @@ export const selectRandomWord = (difficulty: WordDifficulty, category: string = 
 /**
  * Create initial game state
  */
-export const createGame = (
+export const createGame = async (
   difficulty: WordDifficulty = "hard",
   category: string = "Words",
   hintsAllowed: number = 1,
   username?: string
-): Result<GameState, Error> => {
+): Promise<Result<GameState, Error>> => {
   const wordResult = selectRandomWord(difficulty, category);
 
   if (!wordResult.ok) {
     return wordResult;
+  }
+
+  // Load existing statistics for the user if username is provided
+  let statistics = {
+    gamesPlayed: 0,
+    gamesWon: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    totalGuesses: 0,
+    averageGuessesPerWin: 0
+  };
+
+  if (username) {
+    try {
+      const { getUserStatistics } = await import("../auth/kv.ts");
+      statistics = await getUserStatistics(username);
+    } catch (error) {
+      console.warn("Failed to load user statistics:", error);
+      // Use default statistics if loading fails
+    }
   }
 
   return ok({
@@ -49,14 +69,7 @@ export const createGame = (
     hintsAllowed,
     startTime: Date.now(),
     endTime: null,
-    statistics: {
-      gamesPlayed: 0,
-      gamesWon: 0,
-      currentStreak: 0,
-      bestStreak: 0,
-      totalGuesses: 0,
-      averageGuessesPerWin: 0
-    },
+    statistics,
     username
   });
 };

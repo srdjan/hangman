@@ -76,7 +76,7 @@ async function logGameCompletion(gameState: GameState, completionMethod: "guess"
   return sequenceNumber;
 }
 
-const getOrCreateGameSession = (request: Request, authState?: AuthState): Result<[string, GameState]> => {
+const getOrCreateGameSession = async (request: Request, authState?: AuthState): Promise<Result<[string, GameState], Error>> => {
   const cookies = request.headers.get("cookie") || "";
   const sessionCookie = cookies
     .split(";")
@@ -91,7 +91,7 @@ const getOrCreateGameSession = (request: Request, authState?: AuthState): Result
   }
 
   if (!sessionId || !gameState) {
-    const gameResult = createGame("hard", "Words", 1, authState?.username);
+    const gameResult = await createGame("hard", "Words", 1, authState?.username);
     if (!gameResult.ok) {
       return gameResult;
     }
@@ -103,11 +103,11 @@ const getOrCreateGameSession = (request: Request, authState?: AuthState): Result
   return ok([sessionId, gameState]);
 };
 
-export const gameHandler = (request: Request, _params?: Record<string, string>, authState?: AuthState): Promise<Response> => {
-  const sessionResult = getOrCreateGameSession(request, authState);
+export const gameHandler = async (request: Request, _params?: Record<string, string>, authState?: AuthState): Promise<Response> => {
+  const sessionResult = await getOrCreateGameSession(request, authState);
 
   if (!sessionResult.ok) {
-    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
   }
 
   const [sessionId, gameState] = sessionResult.value;
@@ -118,17 +118,17 @@ export const gameHandler = (request: Request, _params?: Record<string, string>, 
   });
 
   const content = gameComponent(gameState);
-  return Promise.resolve(new Response(homePage(content), { headers }));
+  return new Response(homePage(content), { headers });
 };
 
 /**
  * Handle new game creation request
  */
 export const newGameHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
-  const sessionResult = getOrCreateGameSession(request, authState);
+  const sessionResult = await getOrCreateGameSession(request, authState);
 
   if (!sessionResult.ok) {
-    return Promise.resolve(new Response(`Error: ${sessionResult.error.message}`, { status: 500 }));
+    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
   }
 
   const [sessionId, _] = sessionResult.value;
@@ -139,9 +139,9 @@ export const newGameHandler = async (request: Request, authState?: AuthState): P
     const category = "Words";
     const hintsAllowed = 1;
 
-    const gameResult = createGame(difficulty, category, hintsAllowed, authState?.username);
+    const gameResult = await createGame(difficulty, category, hintsAllowed, authState?.username);
     if (!gameResult.ok) {
-      return Promise.resolve(new Response(`Error: ${gameResult.error.message}`, { status: 500 }));
+      return new Response(`Error: ${gameResult.error.message}`, { status: 500 });
     }
 
     setSession(sessionId, gameResult.value);
@@ -151,10 +151,10 @@ export const newGameHandler = async (request: Request, authState?: AuthState): P
       "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
     });
 
-    return Promise.resolve(new Response(gameComponent(gameResult.value), { headers }));
+    return new Response(gameComponent(gameResult.value), { headers });
   } catch (error) {
     console.error("Error in newGameHandler:", error);
-    return Promise.resolve(new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 }));
+    return new Response(`Error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
   }
 };
 
@@ -167,7 +167,7 @@ export const guessHandler = async (request: Request, params: Record<string, stri
     return new Response("Invalid letter", { status: 400 });
   }
 
-  const sessionResult = getOrCreateGameSession(request, authState);
+  const sessionResult = await getOrCreateGameSession(request, authState);
   if (!sessionResult.ok) {
     return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
   }
@@ -183,11 +183,23 @@ export const guessHandler = async (request: Request, params: Record<string, stri
 
   const updatedState = updatedStateResult.value;
 
-  // Log successful game completion
-  if (gameState.status === "playing" && updatedState.status === "won") {
-    const sequenceNumber = await logGameCompletion(updatedState, "guess");
-    // Add sequence number to the updated state for display
-    updatedState.winSequenceNumber = sequenceNumber;
+  // Log successful game completion and save statistics
+  if (gameState.status === "playing" && (updatedState.status === "won" || updatedState.status === "lost")) {
+    if (updatedState.status === "won") {
+      const sequenceNumber = await logGameCompletion(updatedState, "guess");
+      // Add sequence number to the updated state for display
+      updatedState.winSequenceNumber = sequenceNumber;
+    }
+    
+    // Save updated statistics to persistent storage if user is authenticated
+    if (updatedState.username) {
+      try {
+        const { updateUserStatistics } = await import("../auth/kv.ts");
+        await updateUserStatistics(updatedState.username, updatedState.statistics);
+      } catch (error) {
+        console.error("Failed to save user statistics:", error);
+      }
+    }
   }
 
   setSession(sessionId, updatedState);
@@ -204,7 +216,7 @@ export const guessHandler = async (request: Request, params: Record<string, stri
  * Handle hint request
  */
 export const hintHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
-  const sessionResult = getOrCreateGameSession(request, authState);
+  const sessionResult = await getOrCreateGameSession(request, authState);
   if (!sessionResult.ok) {
     return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
   }
@@ -220,11 +232,23 @@ export const hintHandler = async (request: Request, authState?: AuthState): Prom
 
   const updatedState = updatedStateResult.value;
 
-  // Log successful game completion
-  if (gameState.status === "playing" && updatedState.status === "won") {
-    const sequenceNumber = await logGameCompletion(updatedState, "hint");
-    // Add sequence number to the updated state for display
-    updatedState.winSequenceNumber = sequenceNumber;
+  // Log successful game completion and save statistics
+  if (gameState.status === "playing" && (updatedState.status === "won" || updatedState.status === "lost")) {
+    if (updatedState.status === "won") {
+      const sequenceNumber = await logGameCompletion(updatedState, "hint");
+      // Add sequence number to the updated state for display
+      updatedState.winSequenceNumber = sequenceNumber;
+    }
+    
+    // Save updated statistics to persistent storage if user is authenticated
+    if (updatedState.username) {
+      try {
+        const { updateUserStatistics } = await import("../auth/kv.ts");
+        await updateUserStatistics(updatedState.username, updatedState.statistics);
+      } catch (error) {
+        console.error("Failed to save user statistics:", error);
+      }
+    }
   }
 
   setSession(sessionId, updatedState);
