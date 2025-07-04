@@ -227,11 +227,23 @@ export const homePage = (content: string): string => `
     function loadPlayerStandings() {
       const standingsElement = document.getElementById('player-standings');
       if (standingsElement) {
-        fetch('/api/standings')
-          .then(response => response.json())
+        fetch('/api/standings', {
+          credentials: 'include' // Include cookies for authentication
+        })
+          .then(response => {
+            console.log('Standings response status:', response.status);
+            return response.json();
+          })
           .then(data => {
-            if (data.standings) {
+            console.log('Standings data:', data);
+            if (data.standings !== undefined) {
               standingsElement.innerHTML = data.content;
+            } else if (data.error) {
+              console.error('Standings API error:', data.error);
+              standingsElement.innerHTML = '<div class="standings-error">Failed to load standings</div>';
+            } else {
+              console.error('Unexpected standings response:', data);
+              standingsElement.innerHTML = '<div class="standings-error">Unexpected response format</div>';
             }
           })
           .catch(error => {
@@ -245,11 +257,27 @@ export const homePage = (content: string): string => `
     function loadUserStats() {
       const statsElement = document.getElementById('game-stats');
       if (statsElement) {
-        fetch('/api/user-stats')
-          .then(response => response.json())
+        fetch('/api/user-stats', {
+          credentials: 'include' // Include cookies for authentication
+        })
+          .then(response => {
+            console.log('Stats response status:', response.status);
+            return response.json();
+          })
           .then(data => {
+            console.log('Stats data:', data);
             if (data.stats) {
               statsElement.innerHTML = data.content;
+            } else if (data.error) {
+              console.error('Stats API error:', data.error);
+              if (data.error === 'Not authenticated') {
+                statsElement.innerHTML = '<div class="stats-error">Please log in to view statistics<br><small>User statistics require authentication</small></div>';
+              } else {
+                statsElement.innerHTML = '<div class="stats-error">Failed to load statistics</div>';
+              }
+            } else {
+              console.error('Unexpected stats response:', data);
+              statsElement.innerHTML = '<div class="stats-error">Unexpected response format</div>';
             }
           })
           .catch(error => {
@@ -718,6 +746,17 @@ export const dailyLimitReachedPage = (gamesPlayed: number, gamesRemaining: numbe
       </div>
 
       <div class="limit-actions">
+        <!-- Statistics and Standings buttons -->
+        ${username ? `
+          <button class="standings-link-button" onclick="document.getElementById('game-stats').classList.toggle('visible');">
+            📊 View Statistics
+          </button>
+          
+          <button class="standings-link-button" onclick="document.getElementById('player-standings').classList.toggle('visible');">
+            🏆 View Standings
+          </button>
+        ` : ''}
+        
         <button class="standings-link-button" onclick="window.location.href = '/'">
           🎮 Back to Game
         </button>
@@ -734,10 +773,90 @@ export const dailyLimitReachedPage = (gamesPlayed: number, gamesRemaining: numbe
       </div>
     </div>
   </div>
+
+  <!-- Game statistics modal (hidden by default) -->
+  <div id="game-stats" class="game-stats">
+    <div class="stats-loading">Loading statistics...</div>
+  </div>
+
+  <!-- Player standings modal (hidden by default) -->
+  <div id="player-standings" class="player-standings-modal">
+    <div class="standings-loading">Loading standings...</div>
+  </div>
   
   <footer>
     <p>Cooked with ❤️ by <a href="https://srdjan.github.io" target="_blank" rel="noopener noreferrer">⊣˚∆˚⊢</a></p>
   </footer>
+
+  <script>
+    // Load player standings asynchronously
+    function loadPlayerStandings() {
+      const standingsElement = document.getElementById('player-standings');
+      if (standingsElement) {
+        fetch('/api/standings', {
+          credentials: 'include' // Include cookies for authentication
+        })
+          .then(response => {
+            console.log('Standings response status:', response.status);
+            return response.json();
+          })
+          .then(data => {
+            console.log('Standings data:', data);
+            if (data.standings !== undefined) {
+              standingsElement.innerHTML = data.content;
+            } else if (data.error) {
+              console.error('Standings API error:', data.error);
+              standingsElement.innerHTML = '<div class="standings-error">Failed to load standings</div>';
+            } else {
+              console.error('Unexpected standings response:', data);
+              standingsElement.innerHTML = '<div class="standings-error">Unexpected response format</div>';
+            }
+          })
+          .catch(error => {
+            console.error('Error loading standings:', error);
+            standingsElement.innerHTML = '<div class="standings-error">Failed to load standings</div>';
+          });
+      }
+    }
+
+    // Load user statistics asynchronously
+    function loadUserStats() {
+      const statsElement = document.getElementById('game-stats');
+      if (statsElement) {
+        fetch('/api/user-stats', {
+          credentials: 'include' // Include cookies for authentication
+        })
+          .then(response => {
+            console.log('Stats response status:', response.status);
+            return response.json();
+          })
+          .then(data => {
+            console.log('Stats data:', data);
+            if (data.stats) {
+              statsElement.innerHTML = data.content;
+            } else if (data.error) {
+              console.error('Stats API error:', data.error);
+              if (data.error === 'Not authenticated') {
+                statsElement.innerHTML = '<div class="stats-error">Please log in to view statistics<br><small>User statistics require authentication</small></div>';
+              } else {
+                statsElement.innerHTML = '<div class="stats-error">Failed to load statistics</div>';
+              }
+            } else {
+              console.error('Unexpected stats response:', data);
+              statsElement.innerHTML = '<div class="stats-error">Unexpected response format</div>';
+            }
+          })
+          .catch(error => {
+            console.error('Error loading stats:', error);
+            statsElement.innerHTML = '<div class="stats-error">Failed to load statistics</div>';
+          });
+      }
+    }
+
+    // Load data on page load
+    loadPlayerStandings();
+    loadUserStats();
+  </script>
 </body>
 </html>
   `;

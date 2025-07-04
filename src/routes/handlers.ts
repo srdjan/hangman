@@ -269,7 +269,7 @@ export const standingsApiHandler = async (request: Request, authState?: AuthStat
     const { playerStandingsContent } = await import("../views/home.ts");
     
     const standings = await getPlayerStandings(20); // Top 20 players
-    const currentUser = authState?.username;
+    const currentUser = authState?.username || null;
     
     const content = playerStandingsContent(standings, currentUser);
     

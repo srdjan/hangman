@@ -1,62 +1,65 @@
 import { getSession } from "../auth/kv.ts";
 import { AuthState } from "../auth/types.ts";
+import { getGameSession } from "../utils/session.ts";
 
 export async function requireAuth(req: Request): Promise<AuthState | Response> {
-  console.log("=== AUTH MIDDLEWARE ===");
   const cookies = req.headers.get("cookie") || "";
-  console.log("Cookies received:", cookies);
   
-  const match = /(?:^|; )session=([^;]+)/.exec(cookies);
-  const sessionId = match?.[1];
-  console.log("Session ID extracted:", sessionId);
+  // First, try to get auth session (priority)
+  const authMatch = /(?:^|; )session=([^;]+)/.exec(cookies);
+  const authSessionId = authMatch?.[1];
 
-  if (!sessionId) {
-    console.log("No session ID found, redirecting to login");
-    return new Response(null, {
-      status: 302,
-      headers: { "Location": "/login" },
-    });
+  if (authSessionId) {
+    const authSession = await getSession(authSessionId);
+    
+    if (authSession) {
+      return {
+        isAuthenticated: true,
+        username: authSession.username,
+      };
+    }
   }
 
-  const session = await getSession(sessionId);
-  console.log("Session retrieved:", session);
+  // Fallback: try to get game session
+  const [gameSessionId, gameState] = getGameSession(req);
 
-  if (!session) {
-    console.log("Invalid session, clearing cookie and redirecting to login");
-    // Clear invalid session cookie
-    return new Response(null, {
-      status: 302,
-      headers: { 
-        "Location": "/login",
-        "Set-Cookie": "session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0",
-      },
-    });
+  if (gameSessionId && gameState?.username) {
+    return {
+      isAuthenticated: true,
+      username: gameState.username,
+    };
   }
-
-  console.log("Auth successful for user:", session.username);
-  return {
-    isAuthenticated: true,
-    username: session.username,
-  };
+  return new Response(null, {
+    status: 302,
+    headers: { "Location": "/login" },
+  });
 }
 
 export async function getAuthState(req: Request): Promise<AuthState> {
   const cookies = req.headers.get("cookie") || "";
-  const match = /(?:^|; )session=([^;]+)/.exec(cookies);
-  const sessionId = match?.[1];
+  
+  // First, try auth session
+  const authMatch = /(?:^|; )session=([^;]+)/.exec(cookies);
+  const authSessionId = authMatch?.[1];
 
-  if (!sessionId) {
-    return { isAuthenticated: false };
+  if (authSessionId) {
+    const authSession = await getSession(authSessionId);
+    if (authSession) {
+      return {
+        isAuthenticated: true,
+        username: authSession.username,
+      };
+    }
   }
 
-  const session = await getSession(sessionId);
-
-  if (!session) {
-    return { isAuthenticated: false };
+  // Fallback: try game session
+  const [gameSessionId, gameState] = getGameSession(req);
+  if (gameSessionId && gameState?.username) {
+    return {
+      isAuthenticated: true,
+      username: gameState.username,
+    };
   }
 
-  return {
-    isAuthenticated: true,
-    username: session.username,
-  };
+  return { isAuthenticated: false };
 }

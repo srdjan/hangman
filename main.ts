@@ -17,7 +17,7 @@ const protectedHintHandler = withAuth((req, params, auth) => hintHandler(req, au
 const protectedTimeExpiredHandler = withAuth((req, params, auth) => timeExpiredHandler(req, auth));
 const protectedDailyLimitInfoHandler = withAuth((req, params, auth) => dailyLimitInfoHandler(req, auth));
 const protectedStandingsApiHandler = withAuth(standingsApiHandler);
-const protectedUserStatsApiHandler = withAuth(userStatsApiHandler);
+const protectedUserStatsApiHandler = withAuth((req, params, auth) => userStatsApiHandler(req, auth));
 
 // Auth route handlers
 const loginHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
@@ -51,7 +51,7 @@ const runServer = function* () {
     { path: "/hint", handler: protectedHintHandler },
     { path: "/game/time-expired", handler: protectedTimeExpiredHandler },
     { path: "/api/daily-limit-info", handler: protectedDailyLimitInfoHandler },
-    { path: "/api/standings", handler: protectedStandingsApiHandler },
+    { path: "/api/standings", handler: (req, params) => standingsApiHandler(req, undefined) },
     { path: "/api/user-stats", handler: protectedUserStatsApiHandler },
     { path: "/login", handler: loginHandler },
     { path: "/auth/register/options", handler: authRouteHandler },
