@@ -13,6 +13,7 @@
   ],
   "tasks": {
     "dev": "deno run --watch --allow-net --allow-read --allow-env --unstable-kv main.ts",
+    "start": "deno run --watch --allow-net --allow-read --allow-env --unstable-kv main.ts",
     "deploy": "deployctl deploy --project=hangman --allow-net --allow-read --allow-env --unstable-kv --entrypoint=main.ts"
   },
   "imports": {
