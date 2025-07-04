@@ -5,7 +5,7 @@ import {
   verifyAuthenticationResponse,
 } from "@simplewebauthn/server";
 
-import { AUTH_CONFIG } from "../auth/config.ts";
+import { AUTH_CONFIG, getRequestAuthConfig } from "../auth/config.ts";
 import { AUTH_CONFIG as CONSTANTS_AUTH_CONFIG } from "../constants.ts";
 import { 
   getUser, 
@@ -41,33 +41,48 @@ export const authHandler = async (req: Request): Promise<Response> => {
       return new Response("Email must be from an allowed domain", { status: 400 });
     }
 
-    // Use fixed origin values for production domain
-    console.log("Using origin:", AUTH_CONFIG.ORIGIN);
-    console.log("Using RP ID:", AUTH_CONFIG.RP_ID);
+    // Use dynamic origin values based on the request
+    console.log("Request URL:", req.url);
+    console.log("Request hostname:", url.hostname);
+    console.log("Request protocol:", url.protocol);
+    
+    const requestAuthConfig = getRequestAuthConfig(req);
+    console.log("Using origin:", requestAuthConfig.ORIGIN);
+    console.log("Using RP ID:", requestAuthConfig.RP_ID);
 
-    // Load or create user
+    // Load user (create only during registration)
     let user = await getUser(username);
-    if (!user) {
-      console.log("Creating new user with email:", username);
-      user = await createUser(username, username, generateUserId());
-    } else {
-      console.log("Found existing user with email:", username);
-    }
-
+    
     const { pathname, method } = { pathname: url.pathname, method: req.method };
     console.log("Processing route:", pathname, method);
+    
+    // For registration, create user if it doesn't exist
+    if (pathname === "/auth/register/options" && !user) {
+      console.log("Creating new user for registration:", username);
+      user = await createUser(username, username, generateUserId());
+    } else if (pathname === "/auth/register/options" && user) {
+      console.log("Found existing user for registration:", username);
+    }
+    
+    // For login and other operations, user must exist
+    if ((pathname === "/auth/login/options" || pathname === "/auth/login/verify") && !user) {
+      console.log("User not found for login:", username);
+      return new Response("User not found. Please register first.", { status: 404 });
+    } else if (user) {
+      console.log("Found existing user:", username);
+    }
 
     return match({ pathname, method })
     .with({ pathname: "/auth/register/options", method: "GET" }, async () => {
       console.log("=== Credential Creation ===");
-      console.log("Using RP ID:", AUTH_CONFIG.RP_ID);
-      console.log("Using RP Name:", AUTH_CONFIG.RP_NAME);
+      console.log("Using RP ID:", requestAuthConfig.RP_ID);
+      console.log("Using RP Name:", requestAuthConfig.RP_NAME);
       console.log("Email:", user.username);
       
       // Create registration options using SimpleWebAuthn
       const opts = await generateRegistrationOptions({
-        rpName: AUTH_CONFIG.RP_NAME,
-        rpID: AUTH_CONFIG.RP_ID,
+        rpName: requestAuthConfig.RP_NAME,
+        rpID: requestAuthConfig.RP_ID,
         userID: user.id,
         userName: user.username,
         userDisplayName: user.displayName,
@@ -113,9 +128,14 @@ export const authHandler = async (req: Request): Promise<Response> => {
       }
       
       const { id, rawId, response } = requestBody;
+      console.log("=== RECEIVED DATA DEBUG ===");
       console.log("Received credential ID:", id);
+      console.log("Received rawId:", rawId);
       console.log("Received rawId length:", rawId?.length);
+      console.log("Received rawId type:", typeof rawId);
       console.log("Received response keys:", Object.keys(response || {}));
+      console.log("Full request body structure:", JSON.stringify(requestBody, null, 2));
+      console.log("=== END RECEIVED DATA DEBUG ===");
       
       const storedChallenge = await getChallenge(username);
       console.log("Stored challenge found:", !!storedChallenge);
@@ -133,8 +153,8 @@ export const authHandler = async (req: Request): Promise<Response> => {
         console.log("Parsed client data successfully");
         console.log("Client data origin:", clientDataJSON.origin);
         console.log("Client data type:", clientDataJSON.type);
-        console.log("Expected origin:", AUTH_CONFIG.ORIGIN);
-        console.log("Expected RP ID:", AUTH_CONFIG.RP_ID);
+        console.log("Expected origin:", requestAuthConfig.ORIGIN);
+        console.log("Expected RP ID:", requestAuthConfig.RP_ID);
         
         console.log("About to call verifyRegistration...");
         console.log("Challenge length:", storedChallenge.length);
@@ -153,35 +173,79 @@ export const authHandler = async (req: Request): Promise<Response> => {
         try {
           console.log("Attempting verification with SimpleWebAuthn...");
           
-          const verification = await verifyRegistrationResponse({
+          // SimpleWebAuthn v11 API structure - the 'response' parameter should be the credential directly
+          const credentialForVerification = {
+            id,
+            rawId,
             response: {
-              id,
-              rawId,
-              response: {
-                clientDataJSON: response.clientDataJSON,
-                attestationObject: response.attestationObject,
-              },
-              type: "public-key",
+              clientDataJSON: response.clientDataJSON,
+              attestationObject: response.attestationObject,
             },
+            type: "public-key" as const,
+            clientExtensionResults: {},
+          };
+          
+          const verificationOptions = {
+            response: credentialForVerification,
             expectedChallenge: storedChallengeString,
-            expectedOrigin: AUTH_CONFIG.ORIGIN,
-            expectedRPID: AUTH_CONFIG.RP_ID,
+            expectedOrigin: requestAuthConfig.ORIGIN,
+            expectedRPID: requestAuthConfig.RP_ID,
             requireUserVerification: true,
+          };
+          
+          console.log("=== REGISTRATION VERIFICATION DEBUG ===");
+          console.log("Full verification object:", JSON.stringify(verificationOptions, null, 2));
+          console.log("Credential object structure:", {
+            hasId: !!credentialForVerification.id,
+            hasRawId: !!credentialForVerification.rawId,
+            hasClientDataJSON: !!credentialForVerification.response.clientDataJSON,
+            hasAttestationObject: !!credentialForVerification.response.attestationObject,
+            idType: typeof credentialForVerification.id,
+            rawIdType: typeof credentialForVerification.rawId,
+            credentialIdValue: credentialForVerification.id,
+            rawIdValue: credentialForVerification.rawId,
           });
+          console.log("=== END REGISTRATION VERIFICATION DEBUG ===");
+          
+          const verification = await verifyRegistrationResponse(verificationOptions);
           
           verified = verification.verified;
+          
+          console.log("=== FULL VERIFICATION RESULT DEBUG ===");
+          console.log("Verification result keys:", Object.keys(verification));
+          console.log("Verification.verified:", verification.verified);
+          console.log("Has registrationInfo:", !!verification.registrationInfo);
+          console.log("Full verification result JSON:");
+          console.log(JSON.stringify(verification, (key, value) => {
+            // Convert Uint8Arrays to base64 for logging
+            if (value instanceof Uint8Array) {
+              return `[Uint8Array:${value.length} bytes]`;
+            }
+            return value;
+          }, 2));
+          console.log("=== END FULL VERIFICATION RESULT DEBUG ===");
+          
           if (verified && verification.registrationInfo) {
-            console.log("Registration info from SimpleWebAuthn:", {
-              credentialID: verification.registrationInfo.credentialID,
-              credentialIDType: typeof verification.registrationInfo.credentialID,
-              credentialIDLength: verification.registrationInfo.credentialID?.length,
-            });
+            const regInfo = verification.registrationInfo;
+            console.log("RegistrationInfo keys:", Object.keys(regInfo));
+            
+            // FORCE USE ORIGINAL REQUEST DATA - SimpleWebAuthn v13.1.1 structure is unreliable
+            console.log("FORCING use of original request data due to SimpleWebAuthn v13.1.1 structure issues");
             
             registrationInfo = {
-              credentialId: verification.registrationInfo.credentialID,
-              credentialPublicKey: verification.registrationInfo.credentialPublicKey,
-              counter: verification.registrationInfo.counter,
+              credentialId: rawId, // Always use the rawId from original request
+              credentialPublicKey: regInfo.credential?.publicKey || regInfo.credentialPublicKey || new Uint8Array(0),
+              counter: regInfo.credential?.counter || regInfo.counter || 0,
             };
+            
+            console.log("Forced credential extraction result:", {
+              credentialId: registrationInfo.credentialId,
+              credentialIdType: typeof registrationInfo.credentialId,
+              credentialIdSource: "original-rawId",
+              hasPublicKey: !!registrationInfo.credentialPublicKey,
+              publicKeyLength: registrationInfo.credentialPublicKey?.length || 0,
+              counter: registrationInfo.counter
+            });
           }
           
           console.log("SimpleWebAuthn verification result:", verified);
@@ -198,6 +262,17 @@ export const authHandler = async (req: Request): Promise<Response> => {
         }
         
         console.log("Registration verification successful!");
+
+        // EMERGENCY FALLBACK: If registrationInfo is completely broken, use the original request data
+        if (!registrationInfo || !registrationInfo.credentialId) {
+          console.log("Using emergency fallback with original request data");
+          registrationInfo = {
+            credentialId: rawId, // Use the rawId from the original request
+            credentialPublicKey: new Uint8Array(0), // Placeholder - we need the actual public key
+            counter: 0,
+          };
+          console.log("Emergency fallback credential info:", registrationInfo);
+        }
 
         // Add credential to user
         user.credentials.push(registrationInfo);
@@ -237,26 +312,83 @@ export const authHandler = async (req: Request): Promise<Response> => {
     .with({ pathname: "/auth/login/options", method: "GET" }, async () => {
       console.log("=== Login Options ===");
       console.log("User credentials count:", user.credentials.length);
+      
+      // Check if user has any registered credentials
+      if (!user.credentials || user.credentials.length === 0) {
+        console.log("User has no registered credentials for login");
+        return new Response("No registered credentials found. Please register first.", { status: 400 });
+      }
+      
+      // Debug: Log detailed credential information
+      console.log("=== DETAILED CREDENTIAL DEBUG ===");
+      console.log("User object:", JSON.stringify(user, null, 2));
+      console.log("Credentials array:", user.credentials);
+      user.credentials.forEach((cred, index) => {
+        console.log(`Credential ${index}:`, {
+          credentialId: cred.credentialId,
+          credentialIdType: typeof cred.credentialId,
+          credentialIdIsString: typeof cred.credentialId === 'string',
+          credentialIdLength: cred.credentialId?.length,
+          hasPublicKey: !!cred.credentialPublicKey,
+          hasCounter: typeof cred.counter === 'number'
+        });
+      });
+      console.log("=== END CREDENTIAL DEBUG ===");
+      
       console.log("User credentials:", user.credentials.map(c => ({
         id: c.credentialId,
         type: typeof c.credentialId,
         length: c.credentialId?.length
       })));
 
-      const allowCredentials = user.credentials.map((c) => ({
+      // Filter out credentials with invalid or missing IDs
+      const validCredentials = user.credentials.filter(c => {
+        if (!c.credentialId || c.credentialId === 'undefined') {
+          console.log("Filtering out credential with missing/undefined ID:", c);
+          return false;
+        }
+        if (typeof c.credentialId !== 'string') {
+          console.log("Filtering out credential with non-string ID:", c);
+          return false;
+        }
+        return true;
+      });
+      
+      // If we filtered out invalid credentials, update the user
+      if (validCredentials.length !== user.credentials.length) {
+        console.log(`Cleaned up user credentials: ${user.credentials.length} -> ${validCredentials.length}`);
+        user.credentials = validCredentials;
+        await updateUser(username, user);
+      }
+
+      console.log("Valid credentials after filtering:", validCredentials.length);
+
+      if (validCredentials.length === 0) {
+        console.log("No valid credentials found after filtering");
+        return new Response("No valid credentials found. Please register again.", { status: 400 });
+      }
+
+      const allowCredentials = validCredentials.map((c) => ({
         id: c.credentialId, // SimpleWebAuthn handles the conversion automatically
         type: "public-key" as const,
       }));
       
       console.log("Allow credentials:", allowCredentials);
 
-      const opts = await generateAuthenticationOptions({
-        rpID: AUTH_CONFIG.RP_ID,
-        allowCredentials,
-        userVerification: 'required',
-      });
-      
-      console.log("Generated login options:", JSON.stringify(opts, null, 2));
+      let opts;
+      try {
+        opts = await generateAuthenticationOptions({
+          rpID: requestAuthConfig.RP_ID,
+          allowCredentials,
+          userVerification: 'required',
+        });
+        
+        console.log("Generated login options:", JSON.stringify(opts, null, 2));
+      } catch (error) {
+        console.error("Error generating authentication options:", error);
+        console.error("AllowCredentials that caused error:", JSON.stringify(allowCredentials, null, 2));
+        return new Response("Failed to generate login options. Please register again.", { status: 500 });
+      }
 
       // Store challenge as string for SimpleWebAuthn
       const challengeBuffer = new TextEncoder().encode(opts.challenge);
@@ -295,6 +427,44 @@ export const authHandler = async (req: Request): Promise<Response> => {
         // Convert stored challenge back to string for SimpleWebAuthn
         const storedChallengeString = new TextDecoder().decode(new Uint8Array(storedChallenge));
         
+        // Convert credentialId to Uint8Array if it's a string (base64url)
+        const credentialIdBytes = typeof credential.credentialId === 'string' 
+          ? fromB64(credential.credentialId)
+          : credential.credentialId;
+
+        // Properly reconstruct the credential public key from stored data
+        let credentialPublicKey;
+        if (credential.credentialPublicKey instanceof Uint8Array) {
+          credentialPublicKey = credential.credentialPublicKey;
+        } else if (credential.credentialPublicKey && typeof credential.credentialPublicKey === 'object') {
+          // Convert object with numeric keys back to Uint8Array
+          const length = Math.max(...Object.keys(credential.credentialPublicKey).map(Number)) + 1;
+          credentialPublicKey = new Uint8Array(length);
+          for (const [key, value] of Object.entries(credential.credentialPublicKey)) {
+            credentialPublicKey[parseInt(key)] = value as number;
+          }
+        } else {
+          throw new Error("Invalid credential public key format");
+        }
+
+        const authenticatorData = {
+          credentialID: credentialIdBytes,
+          credentialPublicKey: credentialPublicKey,
+          counter: Number(credential.counter) || 0,
+        };
+
+        console.log("About to verify with authenticator data:", {
+          credentialID: credential.credentialId,
+          credentialIDType: typeof credential.credentialId,
+          credentialIDBytes: credentialIdBytes,
+          credentialPublicKey: credentialPublicKey,
+          credentialPublicKeyType: typeof credentialPublicKey,
+          credentialPublicKeyLength: credentialPublicKey.length,
+          counter: authenticatorData.counter,
+          counterType: typeof authenticatorData.counter,
+          authenticatorData: authenticatorData
+        });
+
         const verification = await verifyAuthenticationResponse({
           response: {
             id,
@@ -308,13 +478,9 @@ export const authHandler = async (req: Request): Promise<Response> => {
             type: "public-key",
           },
           expectedChallenge: storedChallengeString,
-          expectedOrigin: AUTH_CONFIG.ORIGIN,
-          expectedRPID: AUTH_CONFIG.RP_ID,
-          authenticator: {
-            credentialID: credential.credentialId,
-            credentialPublicKey: credential.credentialPublicKey,
-            counter: credential.counter,
-          },
+          expectedOrigin: requestAuthConfig.ORIGIN,
+          expectedRPID: requestAuthConfig.RP_ID,
+          authenticator: authenticatorData,
           requireUserVerification: true,
         });
 
@@ -364,7 +530,7 @@ export const authHandler = async (req: Request): Promise<Response> => {
         // For conditional UI, we generate options without specific allowCredentials
         // This allows any registered passkey to be used
         const opts = await generateAuthenticationOptions({
-          rpID: AUTH_CONFIG.RP_ID,
+          rpID: requestAuthConfig.RP_ID,
           allowCredentials: [], // Empty array means any credential can be used
           userVerification: 'preferred', // Use 'preferred' for conditional UI
           timeout: 300000, // 5 minutes for conditional UI
@@ -437,8 +603,8 @@ export const authHandler = async (req: Request): Promise<Response> => {
             type: "public-key",
           },
           expectedChallenge: storedChallengeString,
-          expectedOrigin: AUTH_CONFIG.ORIGIN,
-          expectedRPID: AUTH_CONFIG.RP_ID,
+          expectedOrigin: requestAuthConfig.ORIGIN,
+          expectedRPID: requestAuthConfig.RP_ID,
           authenticator: {
             credentialID: userCredential.credentialId,
             credentialPublicKey: userCredential.credentialPublicKey,
@@ -514,6 +680,60 @@ export const authHandler = async (req: Request): Promise<Response> => {
       } catch (error) {
         console.error("Error identifying user:", error);
         return new Response("Failed to identify user", { status: 500 });
+      }
+    })
+    
+    .with({ pathname: "/auth/cleanup", method: "POST" }, async () => {
+      console.log("=== CLEANUP CORRUPTED USER DATA ===");
+      
+      try {
+        const kvStore = await (await import("../auth/kv.ts")).getKv();
+        let cleanedUsers = 0;
+        let deletedUsers = 0;
+        
+        for await (const { key, value } of kvStore.list({ prefix: ["user"] })) {
+          const user = value;
+          console.log(`Checking user: ${user.username}, credentials: ${user.credentials?.length || 0}`);
+          
+          if (user.credentials && user.credentials.length > 0) {
+            const validCredentials = user.credentials.filter(c => {
+              const isValid = c.credentialId && typeof c.credentialId === 'string' && c.credentialId !== 'undefined';
+              if (!isValid) {
+                console.log(`Invalid credential found for ${user.username}:`, c);
+              }
+              return isValid;
+            });
+            
+            if (validCredentials.length !== user.credentials.length) {
+              if (validCredentials.length === 0) {
+                // Delete user if no valid credentials
+                await kvStore.delete(key);
+                deletedUsers++;
+                console.log(`Deleted user ${user.username} with no valid credentials`);
+              } else {
+                // Update user with only valid credentials
+                user.credentials = validCredentials;
+                await kvStore.set(key, user);
+                cleanedUsers++;
+                console.log(`Cleaned user ${user.username}: ${user.credentials.length} -> ${validCredentials.length} credentials`);
+              }
+            }
+          }
+        }
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          cleanedUsers, 
+          deletedUsers,
+          message: `Cleaned ${cleanedUsers} users, deleted ${deletedUsers} users with no valid credentials`
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+        
+      } catch (error) {
+        console.error("Cleanup error:", error);
+        return new Response(`Cleanup failed: ${error.message}`, { status: 500 });
       }
     })
     

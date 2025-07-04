@@ -1,8 +1,14 @@
+export interface Credential {
+  credentialId: string;
+  credentialPublicKey: Uint8Array;
+  counter: number;
+}
+
 export interface User {
   id: Uint8Array;
   username: string;
   displayName: string;
-  credentials: any[];
+  credentials: Credential[];
   createdAt: number;
 }
 

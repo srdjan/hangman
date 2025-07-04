@@ -363,7 +363,9 @@ export const loginPage = (error?: string): string => `
         
         if (!optionsResponse.ok) {
           console.log('Failed to get login options, status:', optionsResponse.status);
-          throw new Error('Failed to get login options');
+          const errorText = await optionsResponse.text();
+          console.log('Error response:', errorText);
+          throw new Error(errorText || 'Failed to get login options');
         }
         
         const options = await optionsResponse.json();
