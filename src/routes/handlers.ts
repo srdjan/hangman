@@ -1,93 +1,18 @@
 import { createGame, processGuess, getHint } from "../state/game.ts";
-import { getSession, setSession, createSession } from "../state/session.ts";
+import { createSession } from "../state/session.ts";
 import { homePage, gameComponent } from "../views/home.ts";
 import { GameState } from "../types.ts";
 import { AuthState } from "../auth/types.ts";
 import { Result, ok, err } from "../utils/result.ts";
+import { getGameSession, updateGameSession, createSessionHeaders, isValidSession } from "../utils/session.ts";
+import { createHtmlResponse, createHtmlResponseWithSession, createJsonResponse, createErrorResponse, createStaticResponse } from "../utils/http.ts";
+import { handleGameCompletion, handleTimeExpiredStatistics } from "../utils/statistics.ts";
+import { logError, logWarning, LogContext, GameLogger } from "../utils/logger.ts";
+import { GAME_CONFIG, HTTP_STATUS, MESSAGES, REGEX_PATTERNS } from "../constants.ts";
 // Import categories if needed for validation
 // import { categories } from "../data/wordLists.ts";
 
-/**
- * Log successful game completion with timestamp and user info
- */
-async function logGameCompletion(gameState: GameState, completionMethod: "guess" | "hint"): Promise<number> {
-  const { getNextWinSequence, recordWin } = await import("../auth/kv.ts");
-  
-  const completionTime = new Date().toISOString();
-  const username = gameState.username || "Anonymous";
-  const word = gameState.word;
-  const totalTime = gameState.endTime ? gameState.endTime - gameState.startTime : 0;
-  const totalTimeSeconds = Math.round(totalTime / 1000);
-  const totalGuesses = gameState.guessedLetters.size;
-  const hintsUsed = gameState.hintsUsed;
 
-  // Get the next win sequence number
-  const sequenceNumber = await getNextWinSequence();
-
-  console.log("🎉 GAME COMPLETED SUCCESSFULLY! 🎉");
-  console.log("=" .repeat(50));
-  console.log(`🏅 Win #${sequenceNumber} - Congratulations!`);
-  console.log(`👤 Player: ${username}`);
-  console.log(`📝 Word: ${word}`);
-  console.log(`⏰ Completion Time: ${completionTime}`);
-  console.log(`⏱️  Game Duration: ${totalTimeSeconds} seconds`);
-  console.log(`🔤 Total Guesses: ${totalGuesses}`);
-  console.log(`💡 Hints Used: ${hintsUsed}`);
-  console.log(`✅ Completion Method: ${completionMethod === "guess" ? "Final letter guess" : "Hint revealed last letter"}`);
-  console.log(`🏆 Difficulty: ${gameState.difficulty}`);
-  console.log(`📂 Category: ${gameState.category}`);
-  console.log("=" .repeat(50));
-
-  // Record the win in persistent storage
-  const winRecord = {
-    sequenceNumber,
-    username,
-    word,
-    completionTime,
-    duration: totalTimeSeconds,
-    totalGuesses,
-    hintsUsed,
-    completionMethod,
-    difficulty: gameState.difficulty,
-    category: gameState.category,
-    gameId: gameState.id
-  };
-
-  await recordWin(winRecord);
-
-  // Also log in structured format for potential log parsing
-  const logEntry = {
-    event: "game_completed",
-    sequence_number: sequenceNumber,
-    timestamp: completionTime,
-    username,
-    word,
-    duration_seconds: totalTimeSeconds,
-    total_guesses: totalGuesses,
-    hints_used: hintsUsed,
-    completion_method: completionMethod,
-    difficulty: gameState.difficulty,
-    category: gameState.category,
-    game_id: gameState.id
-  };
-
-  console.log("STRUCTURED_LOG:", JSON.stringify(logEntry));
-  
-  return sequenceNumber;
-}
-
-const getGameSession = (request: Request): [string | null, GameState | undefined] => {
-  const cookies = request.headers.get("cookie") || "";
-  const sessionCookie = cookies
-    .split(";")
-    .map(c => c.trim())
-    .find(c => c.startsWith("hangman_session="));
-
-  const sessionId = sessionCookie?.split("=")[1] || null;
-  const gameState = sessionId ? getSession(sessionId) : undefined;
-
-  return [sessionId, gameState];
-};
 
 const createNewGameSession = async (authState?: AuthState): Promise<Result<[string, GameState], Error>> => {
   // Check daily limit before creating new game
@@ -100,12 +25,20 @@ const createNewGameSession = async (authState?: AuthState): Promise<Result<[stri
         return err(new Error(`DAILY_LIMIT_REACHED:${limitCheck.gamesPlayed}:${limitCheck.gamesRemaining}`));
       }
     } catch (error) {
-      console.error("Error checking daily limit:", error);
+      logError(LogContext.GAME, error as Error, { 
+        operation: 'check_daily_limit', 
+        username: authState.username 
+      });
       // Continue without limit check if there's an error
     }
   }
 
-  const gameResult = await createGame("hard", "Words", 1, authState?.username);
+  const gameResult = await createGame(
+    GAME_CONFIG.DEFAULT_DIFFICULTY, 
+    GAME_CONFIG.DEFAULT_CATEGORY, 
+    GAME_CONFIG.DEFAULT_WORD_COUNT, 
+    authState?.username
+  );
   if (!gameResult.ok) {
     return gameResult;
   }
@@ -120,22 +53,15 @@ export const gameHandler = async (request: Request, _params?: Record<string, str
   const [sessionId, gameState] = getGameSession(request);
 
   // If there's no active game, show welcome screen
-  if (!sessionId || !gameState) {
+  if (!isValidSession(sessionId, gameState)) {
     const { welcomeScreen, homePage } = await import("../views/home.ts");
     const content = welcomeScreen(authState?.username);
     
-    return new Response(homePage(content), {
-      headers: { "Content-Type": "text/html; charset=utf-8" }
-    });
+    return createHtmlResponse(homePage(content));
   }
 
-  const headers = new Headers({
-    "Content-Type": "text/html; charset=utf-8",
-    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-  });
-
   const content = gameComponent(gameState);
-  return new Response(homePage(content), { headers });
+  return createHtmlResponseWithSession(homePage(content), sessionId);
 };
 
 /**
@@ -161,31 +87,22 @@ export const newGameHandler = async (request: Request, authState?: AuthState): P
         
         const wrappedContent = `<div class="game-container" id="game-container">${content}</div>`;
         
-        return new Response(wrappedContent, {
-          headers: { "Content-Type": "text/html; charset=utf-8" }
-        });
+        return createHtmlResponse(wrappedContent);
       } else {
         // For full page requests, return the complete page
         const { dailyLimitReachedPage } = await import("../views/home.ts");
         const pageContent = dailyLimitReachedPage(gamesPlayed, gamesRemaining, authState?.username);
         
-        return new Response(pageContent, {
-          headers: { "Content-Type": "text/html; charset=utf-8" }
-        });
+        return createHtmlResponse(pageContent);
       }
     }
     
-    return new Response(`Error: ${sessionResult.error.message}`, { status: 500 });
+    return createErrorResponse(sessionResult.error.message, 500);
   }
 
   const [sessionId, gameState] = sessionResult.value;
 
-  const headers = new Headers({
-    "Content-Type": "text/html; charset=utf-8",
-    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-  });
-
-  return new Response(gameComponent(gameState), { headers });
+  return createHtmlResponseWithSession(gameComponent(gameState), sessionId);
 };
 
 /**
@@ -193,13 +110,13 @@ export const newGameHandler = async (request: Request, authState?: AuthState): P
  */
 export const guessHandler = async (request: Request, params: Record<string, string>, authState?: AuthState): Promise<Response> => {
   const letter = params.letter?.toUpperCase() || "";
-  if (!/^[A-Z]$/.test(letter)) {
-    return new Response("Invalid letter", { status: 400 });
+  if (!REGEX_PATTERNS.LETTER.test(letter)) {
+    return createErrorResponse(MESSAGES.INVALID_LETTER, HTTP_STATUS.BAD_REQUEST);
   }
 
   const [sessionId, gameState] = getGameSession(request);
-  if (!sessionId || !gameState) {
-    return new Response("No active game", { status: 400 });
+  if (!isValidSession(sessionId, gameState)) {
+    return createErrorResponse(MESSAGES.NO_ACTIVE_GAME, HTTP_STATUS.BAD_REQUEST);
   }
 
   // Check if time has expired before processing guess
@@ -207,81 +124,30 @@ export const guessHandler = async (request: Request, params: Record<string, stri
   if (checkTimeExpired(gameState)) {
     const timeExpiredState = createTimeExpiredState(gameState);
     
-    // Save updated statistics if user is authenticated
-    if (timeExpiredState.username) {
-      try {
-        const { updateUserStatistics } = await import("../auth/kv.ts");
-        await updateUserStatistics(timeExpiredState.username, timeExpiredState.statistics);
-      } catch (error) {
-        console.error("Failed to save user statistics:", error);
-      }
-    }
+    // Handle time expired statistics
+    await handleTimeExpiredStatistics(timeExpiredState);
     
-    setSession(sessionId, timeExpiredState);
-    const headers = new Headers({
-      "Content-Type": "text/html; charset=utf-8",
-      "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-    });
-    return new Response(gameComponent(timeExpiredState), { headers });
+    updateGameSession(sessionId, timeExpiredState);
+    return createHtmlResponseWithSession(gameComponent(timeExpiredState), sessionId);
   }
 
   // Process the guess and update the session
   const updatedStateResult = processGuess(gameState, letter);
 
   if (!updatedStateResult.ok) {
-    return new Response(`Error: ${updatedStateResult.error.message}`, { status: 500 });
+    return createErrorResponse(updatedStateResult.error.message, 500);
   }
 
   const updatedState = updatedStateResult.value;
 
-  // Log successful game completion and save statistics
+  // Handle game completion statistics
   if (gameState.status === "playing" && (updatedState.status === "won" || updatedState.status === "lost")) {
-    // Increment daily game count for completed games
-    if (updatedState.username) {
-      try {
-        const { incrementDailyGameCount } = await import("../auth/kv.ts");
-        await incrementDailyGameCount(updatedState.username);
-      } catch (error) {
-        console.error("Failed to increment daily game count:", error);
-      }
-    }
-
-    if (updatedState.status === "won") {
-      const sequenceNumber = await logGameCompletion(updatedState, "guess");
-      // Add sequence number to the updated state for display
-      updatedState.winSequenceNumber = sequenceNumber;
-      
-      // Update player standings for wins
-      if (updatedState.username && updatedState.endTime) {
-        try {
-          const gameTimeSeconds = Math.round((updatedState.endTime - updatedState.startTime) / 1000);
-          const { updatePlayerStanding } = await import("../auth/kv.ts");
-          await updatePlayerStanding(updatedState.username, gameTimeSeconds);
-        } catch (error) {
-          console.error("Failed to update player standings:", error);
-        }
-      }
-    }
-    
-    // Save updated statistics to persistent storage if user is authenticated
-    if (updatedState.username) {
-      try {
-        const { updateUserStatistics } = await import("../auth/kv.ts");
-        await updateUserStatistics(updatedState.username, updatedState.statistics);
-      } catch (error) {
-        console.error("Failed to save user statistics:", error);
-      }
-    }
+    await handleGameCompletion(updatedState, "guess");
   }
 
-  setSession(sessionId, updatedState);
+  updateGameSession(sessionId, updatedState);
 
-  const headers = new Headers({
-    "Content-Type": "text/html; charset=utf-8",
-    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-  });
-
-  return new Response(gameComponent(updatedState), { headers });
+  return createHtmlResponseWithSession(gameComponent(updatedState), sessionId);
 };
 
 /**
@@ -289,8 +155,8 @@ export const guessHandler = async (request: Request, params: Record<string, stri
  */
 export const hintHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
   const [sessionId, gameState] = getGameSession(request);
-  if (!sessionId || !gameState) {
-    return new Response("No active game", { status: 400 });
+  if (!isValidSession(sessionId, gameState)) {
+    return createErrorResponse(MESSAGES.NO_ACTIVE_GAME, HTTP_STATUS.BAD_REQUEST);
   }
 
   // Check if time has expired before processing hint
@@ -298,22 +164,11 @@ export const hintHandler = async (request: Request, authState?: AuthState): Prom
   if (checkTimeExpired(gameState)) {
     const timeExpiredState = createTimeExpiredState(gameState);
     
-    // Save updated statistics if user is authenticated
-    if (timeExpiredState.username) {
-      try {
-        const { updateUserStatistics } = await import("../auth/kv.ts");
-        await updateUserStatistics(timeExpiredState.username, timeExpiredState.statistics);
-      } catch (error) {
-        console.error("Failed to save user statistics:", error);
-      }
-    }
+    // Handle time expired statistics
+    await handleTimeExpiredStatistics(timeExpiredState);
     
-    setSession(sessionId, timeExpiredState);
-    const headers = new Headers({
-      "Content-Type": "text/html; charset=utf-8",
-      "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-    });
-    return new Response(gameComponent(timeExpiredState), { headers });
+    updateGameSession(sessionId, timeExpiredState);
+    return createHtmlResponseWithSession(gameComponent(timeExpiredState), sessionId);
   }
 
   // Process the hint and update the session
@@ -325,54 +180,14 @@ export const hintHandler = async (request: Request, authState?: AuthState): Prom
 
   const updatedState = updatedStateResult.value;
 
-  // Log successful game completion and save statistics
+  // Handle game completion statistics
   if (gameState.status === "playing" && (updatedState.status === "won" || updatedState.status === "lost")) {
-    // Increment daily game count for completed games
-    if (updatedState.username) {
-      try {
-        const { incrementDailyGameCount } = await import("../auth/kv.ts");
-        await incrementDailyGameCount(updatedState.username);
-      } catch (error) {
-        console.error("Failed to increment daily game count:", error);
-      }
-    }
-
-    if (updatedState.status === "won") {
-      const sequenceNumber = await logGameCompletion(updatedState, "hint");
-      // Add sequence number to the updated state for display
-      updatedState.winSequenceNumber = sequenceNumber;
-      
-      // Update player standings for wins
-      if (updatedState.username && updatedState.endTime) {
-        try {
-          const gameTimeSeconds = Math.round((updatedState.endTime - updatedState.startTime) / 1000);
-          const { updatePlayerStanding } = await import("../auth/kv.ts");
-          await updatePlayerStanding(updatedState.username, gameTimeSeconds);
-        } catch (error) {
-          console.error("Failed to update player standings:", error);
-        }
-      }
-    }
-    
-    // Save updated statistics to persistent storage if user is authenticated
-    if (updatedState.username) {
-      try {
-        const { updateUserStatistics } = await import("../auth/kv.ts");
-        await updateUserStatistics(updatedState.username, updatedState.statistics);
-      } catch (error) {
-        console.error("Failed to save user statistics:", error);
-      }
-    }
+    await handleGameCompletion(updatedState, "hint");
   }
 
-  setSession(sessionId, updatedState);
+  updateGameSession(sessionId, updatedState);
 
-  const headers = new Headers({
-    "Content-Type": "text/html; charset=utf-8",
-    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-  });
-
-  return new Response(gameComponent(updatedState), { headers });
+  return createHtmlResponseWithSession(gameComponent(updatedState), sessionId);
 };
 
 /**
@@ -380,8 +195,8 @@ export const hintHandler = async (request: Request, authState?: AuthState): Prom
  */
 export const timeExpiredHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
   const [sessionId, gameState] = getGameSession(request);
-  if (!sessionId || !gameState) {
-    return new Response("No active game", { status: 400 });
+  if (!isValidSession(sessionId, gameState)) {
+    return createErrorResponse(MESSAGES.NO_ACTIVE_GAME, HTTP_STATUS.BAD_REQUEST);
   }
 
   // Check if game is still playing and time has actually expired
@@ -410,34 +225,12 @@ export const timeExpiredHandler = async (request: Request, authState?: AuthState
   // Create time expired state
   const updatedState = createTimeExpiredState(gameState);
 
-  // Increment daily game count for time expired games
-  if (updatedState.username) {
-    try {
-      const { incrementDailyGameCount } = await import("../auth/kv.ts");
-      await incrementDailyGameCount(updatedState.username);
-    } catch (error) {
-      console.error("Failed to increment daily game count:", error);
-    }
-  }
+  // Handle time expired statistics
+  await handleTimeExpiredStatistics(updatedState);
 
-  // Save updated statistics to persistent storage if user is authenticated
-  if (updatedState.username) {
-    try {
-      const { updateUserStatistics } = await import("../auth/kv.ts");
-      await updateUserStatistics(updatedState.username, updatedState.statistics);
-    } catch (error) {
-      console.error("Failed to save user statistics:", error);
-    }
-  }
+  updateGameSession(sessionId, updatedState);
 
-  setSession(sessionId, updatedState);
-
-  const headers = new Headers({
-    "Content-Type": "text/html; charset=utf-8",
-    "Set-Cookie": `hangman_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`
-  });
-
-  return new Response(gameComponent(updatedState), { headers });
+  return createHtmlResponseWithSession(gameComponent(updatedState), sessionId);
 };
 
 
@@ -446,29 +239,24 @@ export const timeExpiredHandler = async (request: Request, authState?: AuthState
  */
 export const dailyLimitInfoHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
   if (!authState?.username) {
-    return new Response(JSON.stringify({ error: "Not authenticated" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" }
-    });
+    return createJsonResponse({ error: "Not authenticated" }, 401);
   }
 
   try {
     const { checkDailyLimit } = await import("../auth/kv.ts");
     const limitCheck = await checkDailyLimit(authState.username);
     
-    return new Response(JSON.stringify({
+    return createJsonResponse({
       gamesPlayed: limitCheck.gamesPlayed,
       gamesRemaining: limitCheck.gamesRemaining,
       canPlay: limitCheck.canPlay
-    }), {
-      headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
-    console.error("Error in dailyLimitInfoHandler:", error);
-    return new Response(JSON.stringify({ error: "Failed to get limit info" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
+    logError(LogContext.API, error as Error, { 
+      operation: 'get_daily_limit_info', 
+      username: authState?.username 
     });
+    return createJsonResponse({ error: "Failed to get limit info" }, 500);
   }
 };
 
@@ -485,18 +273,16 @@ export const standingsApiHandler = async (request: Request, authState?: AuthStat
     
     const content = playerStandingsContent(standings, currentUser);
     
-    return new Response(JSON.stringify({
+    return createJsonResponse({
       standings: standings.length,
       content: content
-    }), {
-      headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
-    console.error("Error in standingsApiHandler:", error);
-    return new Response(JSON.stringify({ error: "Failed to get standings" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
+    logError(LogContext.API, error as Error, { 
+      operation: 'get_standings', 
+      username: authState?.username 
     });
+    return createJsonResponse({ error: "Failed to get standings" }, 500);
   }
 };
 
@@ -505,10 +291,7 @@ export const standingsApiHandler = async (request: Request, authState?: AuthStat
  */
 export const userStatsApiHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
   if (!authState?.username) {
-    return new Response(JSON.stringify({ error: "Not authenticated" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" }
-    });
+    return createJsonResponse({ error: "Not authenticated" }, 401);
   }
 
   try {
@@ -529,18 +312,16 @@ export const userStatsApiHandler = async (request: Request, authState?: AuthStat
     
     const content = gameStatsContent(mockGameState);
     
-    return new Response(JSON.stringify({
+    return createJsonResponse({
       stats: true,
       content: content
-    }), {
-      headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
-    console.error("Error in userStatsApiHandler:", error);
-    return new Response(JSON.stringify({ error: "Failed to get user stats" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
+    logError(LogContext.API, error as Error, { 
+      operation: 'get_user_stats', 
+      username: authState?.username 
     });
+    return createJsonResponse({ error: "Failed to get user stats" }, 500);
   }
 };
 
@@ -552,15 +333,6 @@ export const staticFileHandler = async (request: Request): Promise<Response> => 
   const filePath = url.pathname.replace(/^\/static\//, "");
 
   try {
-    // Set content type based on file extension
-    let contentType;
-    if (filePath.endsWith(".css")) {
-      contentType = "text/css";
-    } else if (filePath.endsWith(".js")) {
-      contentType = "text/javascript";
-    } else {
-      contentType = "application/octet-stream";
-    }
 
 
     // For other files, try different paths
@@ -599,12 +371,13 @@ export const staticFileHandler = async (request: Request): Promise<Response> => 
     }
 
     console.log(`Successfully loaded from: ${foundPath}`);
-    return new Response(contents, {
-      headers: { "Content-Type": contentType }
-    });
+    return createStaticResponse(contents, filePath);
   } catch (error) {
-    console.error(`Failed to load static file: ${filePath}`, error);
-    return new Response(`Not found: ${filePath}`, { status: 404 });
+    logError(LogContext.STATIC, error as Error, { 
+      operation: 'load_static_file', 
+      filePath 
+    });
+    return createErrorResponse(`Not found: ${filePath}`, 404);
   }
 };
 

@@ -5,75 +5,19 @@ import * as effection from "jsr:@effection/effection";
 import { createRouter } from "./src/routes/router.ts";
 import { gameHandler, newGameHandler, guessHandler, hintHandler, timeExpiredHandler, dailyLimitInfoHandler, standingsApiHandler, userStatsApiHandler, staticFileHandler } from "./src/routes/handlers.ts";
 import { authHandler } from "./src/routes/auth.ts";
-import { requireAuth } from "./src/middleware/auth.ts";
+import { withAuth } from "./src/middleware/protectedRoute.ts";
 import { rateLimit, securityHeaders } from "./src/middleware/rateLimiting.ts";
 import { loginPage } from "./src/views/auth.ts";
 
-// Protected route handlers
-const protectedGameHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof Response) {
-    return authResult; // Redirect to login
-  }
-  return gameHandler(request, params, authResult);
-};
-
-const protectedNewGameHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof Response) {
-    return authResult; // Redirect to login
-  }
-  return newGameHandler(request, authResult);
-};
-
-const protectedGuessHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof Response) {
-    return authResult; // Redirect to login
-  }
-  return guessHandler(request, params, authResult);
-};
-
-const protectedHintHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof Response) {
-    return authResult; // Redirect to login
-  }
-  return hintHandler(request, authResult);
-};
-
-const protectedTimeExpiredHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof Response) {
-    return authResult; // Redirect to login
-  }
-  return timeExpiredHandler(request, authResult);
-};
-
-
-const protectedDailyLimitInfoHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof Response) {
-    return authResult; // Redirect to login
-  }
-  return dailyLimitInfoHandler(request, authResult);
-};
-
-const protectedStandingsApiHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof Response) {
-    return authResult; // Redirect to login
-  }
-  return standingsApiHandler(request, authResult);
-};
-
-const protectedUserStatsApiHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof Response) {
-    return authResult; // Redirect to login
-  }
-  return userStatsApiHandler(request, authResult);
-};
+// Create protected route handlers using the withAuth wrapper
+const protectedGameHandler = withAuth(gameHandler);
+const protectedNewGameHandler = withAuth((req, params, auth) => newGameHandler(req, auth));
+const protectedGuessHandler = withAuth(guessHandler);
+const protectedHintHandler = withAuth((req, params, auth) => hintHandler(req, auth));
+const protectedTimeExpiredHandler = withAuth((req, params, auth) => timeExpiredHandler(req, auth));
+const protectedDailyLimitInfoHandler = withAuth((req, params, auth) => dailyLimitInfoHandler(req, auth));
+const protectedStandingsApiHandler = withAuth(standingsApiHandler);
+const protectedUserStatsApiHandler = withAuth(userStatsApiHandler);
 
 // Auth route handlers
 const loginHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
