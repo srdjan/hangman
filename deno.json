@@ -31,5 +31,8 @@
       "src/**/*",
       "main.ts"
     ]
-  }
+  },
+  "unstable": [
+    "unstable-kv"
+  ]
 }
