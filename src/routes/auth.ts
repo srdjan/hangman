@@ -447,24 +447,29 @@ export const authHandler = async (req: Request): Promise<Response> => {
           throw new Error("Invalid credential public key format");
         }
 
-        const authenticatorData = {
-          credentialID: credentialIdBytes,
-          credentialPublicKey: credentialPublicKey,
+        // SimpleWebAuthn v13.1.1 expects: { id, publicKey, counter }
+        const authenticatorCredential = {
+          id: credentialIdBytes,  // Uint8Array of credential ID
+          publicKey: credentialPublicKey,  // Uint8Array of public key
           counter: Number(credential.counter) || 0,
         };
 
-        console.log("About to verify with authenticator data:", {
-          credentialID: credential.credentialId,
-          credentialIDType: typeof credential.credentialId,
-          credentialIDBytes: credentialIdBytes,
+        console.log("About to verify with v13.1.1 credential structure:", {
+          credentialID_original: credential.credentialId,
+          credentialID_bytes: credentialIdBytes,
+          credentialID_bytes_length: credentialIdBytes.length,
           credentialPublicKey: credentialPublicKey,
-          credentialPublicKeyType: typeof credentialPublicKey,
           credentialPublicKeyLength: credentialPublicKey.length,
-          counter: authenticatorData.counter,
-          counterType: typeof authenticatorData.counter,
-          authenticatorData: authenticatorData
+          counter: authenticatorCredential.counter,
+          counterType: typeof authenticatorCredential.counter,
+          fullCredentialStructure: {
+            id: authenticatorCredential.id,
+            publicKey: authenticatorCredential.publicKey,
+            counter: authenticatorCredential.counter
+          }
         });
 
+        // SimpleWebAuthn v13.1.1 API
         const verification = await verifyAuthenticationResponse({
           response: {
             id,
@@ -476,11 +481,12 @@ export const authHandler = async (req: Request): Promise<Response> => {
               userHandle: response.userHandle,
             },
             type: "public-key",
+            clientExtensionResults: {},
           },
           expectedChallenge: storedChallengeString,
           expectedOrigin: requestAuthConfig.ORIGIN,
           expectedRPID: requestAuthConfig.RP_ID,
-          authenticator: authenticatorData,
+          credential: authenticatorCredential,  // Changed from 'authenticator' to 'credential'
           requireUserVerification: true,
         });
 
