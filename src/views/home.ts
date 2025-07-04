@@ -241,8 +241,27 @@ export const homePage = (content: string): string => `
       }
     }
 
-    // Load standings on page load
+    // Load user statistics asynchronously
+    function loadUserStats() {
+      const statsElement = document.getElementById('game-stats');
+      if (statsElement) {
+        fetch('/api/user-stats')
+          .then(response => response.json())
+          .then(data => {
+            if (data.stats) {
+              statsElement.innerHTML = data.content;
+            }
+          })
+          .catch(error => {
+            console.error('Error loading user statistics:', error);
+            statsElement.innerHTML = '<div class="stats-error">Failed to load statistics</div>';
+          });
+      }
+    }
+
+    // Load data on page load
     loadPlayerStandings();
+    loadUserStats();
 
     // Listen for HTMX events to reinitialize timer after updates
     document.addEventListener('htmx:afterSettle', function(event) {
@@ -250,6 +269,7 @@ export const homePage = (content: string): string => `
         initializeOrUpdateTimer();
         loadDailyLimitInfo();
         loadPlayerStandings();
+        loadUserStats();
       }
     });
   </script>
@@ -724,7 +744,7 @@ export const dailyLimitReachedPage = (gamesPlayed: number, gamesRemaining: numbe
 };
 
 /**
- * Daily limit reached component (for embedding in other pages)
+ * Daily limit reached component with navigation (for HTMX replacement)
  */
 export const dailyLimitReached = (gamesPlayed: number, gamesRemaining: number, username?: string): string => {
   const tomorrow = new Date();
@@ -733,6 +753,68 @@ export const dailyLimitReached = (gamesPlayed: number, gamesRemaining: number, u
   const resetTime = tomorrow.toLocaleString();
 
   return `
+  <!-- Top navigation bar -->
+  <div class="game-header">
+    <div class="game-title">
+      <h2>Hangman</h2>
+      ${username ? `<div class="user-info">Daily limit reached for ${username.split('@')[0]}</div>` : ''}
+    </div>
+
+    <!-- Empty space where countdown would be -->
+    <div class="countdown-timer" style="visibility: hidden;"></div>
+
+    <div class="game-nav">
+      <!-- Dashboard toggle button -->
+      <button
+        class="dashboard-toggle"
+        aria-label="Toggle statistics dashboard"
+        onclick="document.getElementById('game-stats').classList.toggle('visible');"
+      >
+        <span class="dashboard-icon">📊</span>
+      </button>
+      
+      <!-- Standings button -->
+      <button
+        class="standings-button"
+        aria-label="Toggle player standings"
+        onclick="document.getElementById('player-standings').classList.toggle('visible');"
+      >
+        <span class="standings-icon">🏆</span>
+      </button>
+      
+      <!-- New Game button (disabled) -->
+      <button
+        class="new-game-nav disabled"
+        aria-label="New Game"
+        disabled
+      >
+        <span class="new-game-icon">🔄</span>
+      </button>
+      
+      ${username ? `
+        <!-- Logout button -->
+        <button
+          class="logout-button"
+          aria-label="Logout"
+          onclick="fetch('/auth/logout', {method: 'POST'}).then(() => window.location.href = '/login')"
+        >
+          <span class="logout-icon">🚪</span>
+        </button>
+      ` : ''}
+    </div>
+  </div>
+
+  <!-- Game statistics modal (hidden by default) -->
+  <div id="game-stats" class="game-stats">
+    <div class="stats-loading">Loading statistics...</div>
+  </div>
+
+  <!-- Player standings modal (hidden by default) -->
+  <div id="player-standings" class="player-standings-modal">
+    <div class="standings-loading">Loading standings...</div>
+  </div>
+
+  <!-- Daily limit content -->
   <div class="daily-limit-container">
     <div class="limit-message">
       <h2>🎯 Daily Game Limit Reached</h2>
@@ -810,11 +892,11 @@ export const welcomeScreen = (username?: string): string => {
       <div class="countdown-timer" style="visibility: hidden;"></div>
 
       <div class="game-nav">
-        <!-- Dashboard toggle button (disabled on welcome screen) -->
+        <!-- Dashboard toggle button -->
         <button
-          class="dashboard-toggle disabled"
+          class="dashboard-toggle"
           aria-label="Toggle statistics dashboard"
-          disabled
+          onclick="document.getElementById('game-stats').classList.toggle('visible');"
         >
           <span class="dashboard-icon">📊</span>
         </button>
@@ -850,6 +932,11 @@ export const welcomeScreen = (username?: string): string => {
           </button>
         ` : ''}
       </div>
+    </div>
+
+    <!-- Game statistics modal (hidden by default) -->
+    <div id="game-stats" class="game-stats">
+      <div class="stats-loading">Loading statistics...</div>
     </div>
 
     <!-- Player standings modal (hidden by default) -->

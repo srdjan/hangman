@@ -9,7 +9,7 @@
   --hover-scale: 1.03;
 
   /* Responsive sizing variables */
-  --base-padding: clamp(0.5rem, 3vw, 2rem);
+  --base-padding: clamp(0.5rem, 3vw, 1.2rem);
   --font-size-h1: clamp(1.75rem, 5vw, 2.5rem);
   --font-size-word: clamp(1.25rem, 4vw, 2.5rem);
   --font-size-btn: clamp(0.9rem, 2.5vw, 1.1rem);
@@ -19,7 +19,7 @@
 }
 
 body {
-  margin: 0;
+  margin: 1rem 0;
   padding: var(--base-padding);
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -1368,6 +1368,25 @@ button:active:not(:disabled) {
   font-size: 0.9rem;
   text-align: center;
   padding: 1rem;
+}
+
+.stats-loading {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.standings-error,
+.stats-error {
+  color: var(--danger-color);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem;
+  background: rgba(231, 76, 60, 0.1);
+  border-radius: 0.5rem;
+  margin: 0.5rem;
 }
 
 .game-stats h3 {

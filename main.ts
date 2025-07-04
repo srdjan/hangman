@@ -3,7 +3,7 @@
 // Import dependencies using direct URLs for Deno Deploy
 import * as effection from "jsr:@effection/effection";
 import { createRouter } from "./src/routes/router.ts";
-import { gameHandler, newGameHandler, guessHandler, hintHandler, timeExpiredHandler, dailyLimitInfoHandler, standingsApiHandler, staticFileHandler } from "./src/routes/handlers.ts";
+import { gameHandler, newGameHandler, guessHandler, hintHandler, timeExpiredHandler, dailyLimitInfoHandler, standingsApiHandler, userStatsApiHandler, staticFileHandler } from "./src/routes/handlers.ts";
 import { authHandler } from "./src/routes/auth.ts";
 import { requireAuth } from "./src/middleware/auth.ts";
 import { rateLimit, securityHeaders } from "./src/middleware/rateLimiting.ts";
@@ -67,6 +67,14 @@ const protectedStandingsApiHandler = async (request: Request, params: Record<str
   return standingsApiHandler(request, authResult);
 };
 
+const protectedUserStatsApiHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof Response) {
+    return authResult; // Redirect to login
+  }
+  return userStatsApiHandler(request, authResult);
+};
+
 // Auth route handlers
 const loginHandler = async (request: Request, params: Record<string, string>): Promise<Response> => {
   return new Response(loginPage(), {
@@ -100,6 +108,7 @@ const runServer = function* () {
     { path: "/game/time-expired", handler: protectedTimeExpiredHandler },
     { path: "/api/daily-limit-info", handler: protectedDailyLimitInfoHandler },
     { path: "/api/standings", handler: protectedStandingsApiHandler },
+    { path: "/api/user-stats", handler: protectedUserStatsApiHandler },
     { path: "/login", handler: loginHandler },
     { path: "/auth/register/options", handler: authRouteHandler },
     { path: "/auth/register/verify", handler: authRouteHandler },

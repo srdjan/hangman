@@ -501,6 +501,50 @@ export const standingsApiHandler = async (request: Request, authState?: AuthStat
 };
 
 /**
+ * Handle user stats API request
+ */
+export const userStatsApiHandler = async (request: Request, authState?: AuthState): Promise<Response> => {
+  if (!authState?.username) {
+    return new Response(JSON.stringify({ error: "Not authenticated" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
+    const { getUserStatistics } = await import("../auth/kv.ts");
+    const { gameStatsContent } = await import("../views/home.ts");
+    
+    const statistics = await getUserStatistics(authState.username);
+    
+    // Create a minimal game state object for the stats display
+    const mockGameState = {
+      statistics,
+      username: authState.username,
+      status: "not_playing" as const,
+      startTime: 0,
+      endTime: 0,
+      timeLimit: 60
+    };
+    
+    const content = gameStatsContent(mockGameState);
+    
+    return new Response(JSON.stringify({
+      stats: true,
+      content: content
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error) {
+    console.error("Error in userStatsApiHandler:", error);
+    return new Response(JSON.stringify({ error: "Failed to get user stats" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+};
+
+/**
  * Handle static file requests
  */
 export const staticFileHandler = async (request: Request): Promise<Response> => {
@@ -518,14 +562,6 @@ export const staticFileHandler = async (request: Request): Promise<Response> => 
       contentType = "application/octet-stream";
     }
 
-    // We'll embed the CSS directly if we can't load it from file
-    if (filePath === "styles.css") {
-      // If this is styles.css and we're in deployment, return hardcoded CSS
-      const cssContent = await getStaticCSS();
-      return new Response(cssContent, {
-        headers: { "Content-Type": "text/css" }
-      });
-    }
 
     // For other files, try different paths
     let contents;
@@ -568,132 +604,7 @@ export const staticFileHandler = async (request: Request): Promise<Response> => 
     });
   } catch (error) {
     console.error(`Failed to load static file: ${filePath}`, error);
-    if (filePath === "styles.css") {
-      // Last-resort fallback for CSS
-      return new Response("/* Fallback CSS */", {
-        headers: { "Content-Type": "text/css" }
-      });
-    }
     return new Response(`Not found: ${filePath}`, { status: 404 });
   }
 };
 
-// Function to get CSS content - we'll use this as a fallback
-async function getStaticCSS() {
-  try {
-    // Add paths for single repo structure
-    const paths = [
-      "./static/styles.css",
-      "../static/styles.css",
-      `${Deno.cwd()}/src/static/styles.css`,
-      `${Deno.cwd()}/static/styles.css`,
-      "/static/styles.css"
-    ];
-
-    for (const path of paths) {
-      try {
-        return await Deno.readTextFile(path);
-      } catch {
-        // Try next path
-      }
-    }
-
-    // If all paths fail, return a basic fallback CSS
-    return `
-:root {
-  --primary-color: #2c3e50;
-  --secondary-color: #3498db;
-  --success-color: #2ecc71;
-  --danger-color: #e74c3c;
-  --text-color: #34495e;
-}
-
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  margin: 0;
-  padding: 2rem;
-}
-
-.game-container {
-  background: #f8f9fa;
-  border-radius: 1rem;
-  padding: 0.5rem;
-  max-width: 800px;
-  margin: 0 auto;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.hangman-display {
-  width: 300px;
-  margin: 0 auto;
-  background: transparent !important;
-}
-
-svg {
-  width: 100%;
-  background: transparent !important;
-}
-
-.hangman-part {
-  stroke: var(--primary-color);
-  stroke-width: 4;
-  stroke-linecap: round;
-  fill: transparent !important;
-}
-
-.word-display {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin: 2rem 0;
-  font-size: 2rem;
-  letter-spacing: 0.3rem;
-}
-
-.letter {
-  border-bottom: 4px solid var(--secondary-color);
-  min-width: 1em;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.keyboard {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
-  gap: 0.5rem;
-  margin-top: 2rem;
-}
-
-button {
-  padding: 0.8rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: var(--secondary-color);
-  color: white;
-  cursor: pointer;
-}
-
-button:disabled {
-  background: #bdc3c7;
-  opacity: 0.7;
-}
-
-.restart {
-  background: var(--success-color);
-  grid-column: span 3;
-}
-
-.status.win {
-  color: var(--success-color);
-}
-
-.status.lose {
-  color: var(--danger-color);
-}
-`;
-  } catch (error) {
-    console.error("Error getting static CSS:", error);
-    return "/* Error loading CSS */";
-  }
-}
