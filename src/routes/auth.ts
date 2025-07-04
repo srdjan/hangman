@@ -6,6 +6,7 @@ import {
 } from "@simplewebauthn/server";
 
 import { AUTH_CONFIG } from "../auth/config.ts";
+import { AUTH_CONFIG as CONSTANTS_AUTH_CONFIG } from "../constants.ts";
 import { 
   getUser, 
   createUser, 
@@ -35,15 +36,14 @@ export const authHandler = async (req: Request): Promise<Response> => {
     }
     
     // Validate email domain
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@fadv\.com$/;
-    if (!emailRegex.test(username)) {
+    if (!CONSTANTS_AUTH_CONFIG.EMAIL_REGEX.test(username)) {
       console.log("Invalid email domain:", username);
-      return new Response("Email must be from @fadv.com domain", { status: 400 });
+      return new Response("Email must be from an allowed domain", { status: 400 });
     }
 
-    // Use fixed origin values
-    console.log("Using fixed origin:", AUTH_CONFIG.ORIGIN);
-    console.log("Using fixed RP ID:", AUTH_CONFIG.RP_ID);
+    // Use fixed origin values for production domain
+    console.log("Using origin:", AUTH_CONFIG.ORIGIN);
+    console.log("Using RP ID:", AUTH_CONFIG.RP_ID);
 
     // Load or create user
     let user = await getUser(username);
@@ -393,10 +393,9 @@ export const authHandler = async (req: Request): Promise<Response> => {
         console.log("Credential ID:", credential.id);
         
         // Validate email domain
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@fadv\.com$/;
-        if (!emailRegex.test(username)) {
+        if (!CONSTANTS_AUTH_CONFIG.EMAIL_REGEX.test(username)) {
           console.log("Invalid email domain:", username);
-          return new Response("Email must be from @fadv.com domain", { status: 400 });
+          return new Response("Email must be from an allowed domain", { status: 400 });
         }
         
         // Get user data

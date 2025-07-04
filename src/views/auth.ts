@@ -23,7 +23,7 @@ export const loginPage = (error?: string): string => `
           class="username-input" 
           placeholder="Enter your @fadv.com email"
           autocomplete="username webauthn"
-          pattern="[a-zA-Z0-9._%+-]+@fadv\\.com$"
+          pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
           title="Please enter a valid @fadv.com email address"
           required
         />
@@ -95,7 +95,7 @@ export const loginPage = (error?: string): string => `
 
     // Email validation function
     function validateEmail(email) {
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@fadv\.com$/;
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       return emailRegex.test(email);
     }
 

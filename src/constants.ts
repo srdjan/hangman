@@ -39,10 +39,11 @@ export const SESSION_CONFIG = {
 
 // Authentication Constants
 export const AUTH_CONFIG = {
-  // Email validation
-  EMAIL_DOMAIN: 'fadv.com',
-  EMAIL_REGEX: /^[a-zA-Z0-9._%+-]+@fadv\.com$/,
-  EMAIL_PATTERN: '[a-zA-Z0-9._%+-]+@fadv\\.com$',
+  // Email validation - supports multiple domains
+  DISPLAY_EMAIL_DOMAIN: 'fadv.com',
+  ALLOWED_EMAIL_DOMAINS: ['fadv.com', 'deno.dev', 'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'],
+  EMAIL_REGEX: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+  EMAIL_PATTERN: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
   
   // WebAuthn settings
   WEBAUTHN_TIMEOUT: 60000, // 1 minute
