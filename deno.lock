@@ -10,8 +10,8 @@
     "jsr:@std/assert@1.0.10": "1.0.10",
     "jsr:@std/internal@^1.0.5": "1.0.6",
     "jsr:@std/internal@^1.0.6": "1.0.6",
-    "npm:@simplewebauthn/server@10": "10.0.1",
-    "npm:@simplewebauthn/types@10": "10.0.0",
+    "npm:@simplewebauthn/server@11": "11.0.0",
+    "npm:@simplewebauthn/types@11": "11.0.0",
     "npm:@types/node@*": "22.12.0"
   },
   "jsr": {
@@ -94,8 +94,8 @@
         "tslib"
       ]
     },
-    "@simplewebauthn/server@10.0.1": {
-      "integrity": "sha512-djNWcRn+H+6zvihBFJSpG3fzb0NQS9c/Mw5dYOtZ9H+oDw8qn9Htqxt4cpqRvSOAfwqP7rOvE9rwqVaoGGc3hg==",
+    "@simplewebauthn/server@11.0.0": {
+      "integrity": "sha512-zu8dxKcPiRUNSN2kmrnNOzNbRI8VaR/rL4ENCHUfC6PEE7SAAdIql9g5GBOd/wOVZolIsaZz3ccFxuGoVP0iaw==",
       "dependencies": [
         "@hexagon/base64",
         "@levischuck/tiny-cbor",
@@ -108,8 +108,8 @@
         "cross-fetch"
       ]
     },
-    "@simplewebauthn/types@10.0.0": {
-      "integrity": "sha512-SFXke7xkgPRowY2E+8djKbdEznTVnD5R6GO7GPTthpHrokLvNKw8C3lFZypTxLI7KkCfGPfhtqB3d7OVGGa9jQ=="
+    "@simplewebauthn/types@11.0.0": {
+      "integrity": "sha512-b2o0wC5u2rWts31dTgBkAtSNKGX0cvL6h8QedNsKmj8O4QoLFQFR3DBVBUlpyVEhYKA+mXGUaXbcOc4JdQ3HzA=="
     },
     "@types/node@22.12.0": {
       "integrity": "sha512-Fll2FZ1riMjNmlmJOdAyY5pUbkftXslB5DgEzlIuNaiWhXd00FhWxVC/r4yV/4wBb9JfImTu+jiSvXTkJ7F/gA==",
@@ -223,8 +223,8 @@
       "jsr:@effection/effection@^3.4.0",
       "jsr:@gabriel/ts-pattern@^5.6.2",
       "jsr:@std/assert@1",
-      "npm:@simplewebauthn/server@10",
-      "npm:@simplewebauthn/types@10"
+      "npm:@simplewebauthn/server@11",
+      "npm:@simplewebauthn/types@11"
     ]
   }
 }

@@ -4,12 +4,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from "@simplewebauthn/server";
-import type {
-  GenerateRegistrationOptionsOpts,
-  VerifyRegistrationResponseOpts,
-  GenerateAuthenticationOptionsOpts,
-  VerifyAuthenticationResponseOpts,
-} from "@simplewebauthn/server";
+
 import { AUTH_CONFIG } from "../auth/config.ts";
 import { 
   getUser, 
